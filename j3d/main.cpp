@@ -45,6 +45,10 @@ int main(int argc, char** argv)
     return -1;
   {
   view v;
+  for (int i = 1; i < argc; ++i)
+    {
+    v.load_mesh_from_file(argv[i]);
+    }
   v.prepare_window();
   v.loop();
   }
