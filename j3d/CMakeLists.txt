@@ -1,0 +1,131 @@
+if (WIN32)
+  set(TBB_INCLUDE_DIR "C:/Program Files/TBB/include" CACHE PATH "the include path for TBB")
+  set(TBB_LIBRARIES "C:/Program Files/TBB/lib/intel64/vc14/tbb.lib" "C:/Program Files/TBB/lib/intel64/vc14/tbb_debug.lib" CACHE FILEPATH "the tbb lib files")
+  set(OPENGL_LIBRARIES opengl32.lib CACHE FILEPATH "opengl lib file")
+endif (WIN32)
+
+if (UNIX)
+  if (APPLE)
+    set(TBB_INCLUDE_DIR "/usr/local/include" "/usr/include" CACHE PATH "the include path for TBB")
+    set(TBB_LIBRARIES "/usr/local/lib/libtbb.dylib" CACHE FILEPATH "the tbb .dylib file")
+    set(OPENGL_LIBRARIES "/System/Library/Frameworks/OpenGL.framework/OpenGL" CACHE FILEPATH "opengl lib file")
+  else()
+    set(TBB_INCLUDE_DIR "/usr/local/include" "/usr/include" CACHE PATH "the include path for TBB")
+    set(TBB_LIBRARIES "/usr/lib/x86_64-linux-gnu/libtbb.so" "/usr/lib/x86_64-linux-gnu/libtbb.so.2" CACHE FILEPATH "the tbb .so files")
+    set(OPENGL_LIBRARIES "/usr/lib/x86_64-linux-gnu/libOpenGL.so.0.0.0" CACHE FILEPATH "opengl lib file")
+  endif(APPLE)
+endif (UNIX)
+
+set(STB
+../stb/stb_image.h
+../stb/stb_image_write.h
+)
+
+set(HDRS
+canvas.h
+camera.h
+db.h
+io.h
+matcap.h
+mesh.h
+mouse.h
+pc.h
+pixel.h
+scene.h
+trackball.h
+view.h
+)
+	
+set(SRCS
+j3d.rc
+camera.cpp
+canvas.cpp
+db.cpp
+io.cpp
+main.cpp
+matcap.cpp
+mesh.cpp
+pc.cpp
+pixel.cpp
+scene.cpp
+trackball.c
+view.cpp
+)
+
+set(RESOURCES
+j3d.ico
+)
+
+
+if (UNIX)
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -msse4.1 -pthread")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -msse4.1 -pthread -std=c++11")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -msse4.1 -pthread")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -msse4.1 -pthread -std=c++11")
+endif (UNIX)
+
+# general build definitions
+add_definitions(-D_SCL_SECURE_NO_WARNINGS)
+add_definitions(-DMEMORY_LEAK_TRACKING)
+add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+
+include ("../jtk/jtk/jtk.cmake")
+
+if (WIN32)
+add_executable(j3d WIN32 ${HDRS} ${SRCS} ${RESOURCES} ${STB})
+else (WIN32)
+add_executable(j3d ${HDRS} ${SRCS} ${RESOURCES} ${STB})
+endif (WIN32)
+
+source_group("Header Files" FILES ${HDRS})
+source_group("Source Files" FILES ${SRCS})
+source_group("stb" FILES ${STB})
+
+target_include_directories(j3d
+    PRIVATE
+    .
+    ${CMAKE_CURRENT_SOURCE_DIR}/../
+    ${CMAKE_CURRENT_SOURCE_DIR}/../jtk/
+    ${CMAKE_CURRENT_SOURCE_DIR}/../stb/
+    ${CMAKE_CURRENT_BINARY_DIR}/../sdl2/include
+    )	
+	
+target_link_libraries(j3d
+    PRIVATE
+    ${OPENGL_LIBRARIES}    
+    SDL2-static
+    SDL2main
+    )
+    
+
+if (UNIX)
+
+set(XLIBINCLUDE "")
+set(XLIBLIBRARY "X11.so")
+
+if (APPLE)
+set(XLIBINCLUDE "/usr/X11/include/")
+set(XLIBLIBRARY "/usr/X11/lib/libX11.dylib")
+endif (APPLE)
+
+target_include_directories(j3d
+   PRIVATE
+   ${XLIBINCLUDE}
+   )
+   
+target_link_libraries(j3d
+    PRIVATE
+    ${XLIBLIBRARY}
+    )
+endif (UNIX)
+
+if (${JTK_THREADING} STREQUAL "tbb")
+  target_include_directories(j3d
+      PRIVATE
+      ${TBB_INCLUDE_DIR}
+      )
+  target_link_libraries(j3d
+      PRIVATE	
+      ${TBB_LIBRARIES}      
+      )	
+endif (${JTK_THREADING} STREQUAL "tbb")   

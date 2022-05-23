@@ -1,0 +1,3 @@
+
+#define ID_ICON       100
+ID_ICON               ICON    DISCARDABLE     "j3d.ico"
