@@ -16,6 +16,25 @@ if (UNIX)
   endif(APPLE)
 endif (UNIX)
 
+set(IMGUI
+${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imgui.h
+${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imgui_impl_opengl2.h
+${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imgui_impl_sdl.h
+${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imgui_stdlib.h
+${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/dirent_portable.h
+${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imguifilesystem.h
+${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imgui.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imgui_draw.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imgui_demo.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imgui_impl_opengl2.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imgui_impl_sdl.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imgui_stdlib.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imgui_tables.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imgui_widgets.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imguifilesystem.cpp
+)
+
+
 set(STB
 ../stb/stb_image.h
 ../stb/stb_image_write.h
@@ -72,14 +91,16 @@ add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 include ("../jtk/jtk/jtk.cmake")
 
 if (WIN32)
-add_executable(j3d WIN32 ${HDRS} ${SRCS} ${RESOURCES} ${STB})
+add_executable(j3d WIN32 ${HDRS} ${SRCS} ${RESOURCES} ${STB} ${IMGUI})
 else (WIN32)
-add_executable(j3d ${HDRS} ${SRCS} ${RESOURCES} ${STB})
+add_executable(j3d ${HDRS} ${SRCS} ${RESOURCES} ${STB} ${IMGUI})
 endif (WIN32)
 
 source_group("Header Files" FILES ${HDRS})
 source_group("Source Files" FILES ${SRCS})
 source_group("stb" FILES ${STB})
+source_group("ImGui" FILES ${IMGUI})
+
 
 target_include_directories(j3d
     PRIVATE
@@ -88,6 +109,7 @@ target_include_directories(j3d
     ${CMAKE_CURRENT_SOURCE_DIR}/../jtk/
     ${CMAKE_CURRENT_SOURCE_DIR}/../stb/
     ${CMAKE_CURRENT_BINARY_DIR}/../sdl2/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/
     )	
 	
 target_link_libraries(j3d

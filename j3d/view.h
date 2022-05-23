@@ -46,6 +46,8 @@ class view
 
   private:
 
+    void imgui_ui();
+
     uint32_t _get_semirandom_matcap_id(uint32_t object_id) const;
 
     void poll_for_events();

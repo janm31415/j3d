@@ -3,6 +3,11 @@
 #include "pc.h"
 #include "view.h"
 
+#include "imgui.h"
+#include "imgui_impl_sdl.h"
+#include "imgui_impl_opengl2.h"
+#include "imguifilesystem.h"
+
 #include <iostream>
 
 #include <SDL_syswm.h>
@@ -116,6 +121,11 @@ void view::delete_window()
   if (!_window)
     return;
   glDeleteTextures(1, &_gl_texture);
+  // Cleanup
+  ImGui_ImplOpenGL2_Shutdown();
+  ImGui_ImplSDL2_Shutdown();
+  ImGui::DestroyContext();
+
   SDL_DestroyWindow(_window);
   _window = nullptr;
   }
@@ -133,6 +143,21 @@ void view::prepare_window()
   }
   SDL_GLContext gl_context = SDL_GL_CreateContext(_window);
   SDL_GL_SetSwapInterval(1); // Enable vsync
+
+  // Setup Dear ImGui context
+  IMGUI_CHECKVERSION();
+  ImGui::CreateContext();
+
+  // Setup Platform/Renderer bindings
+  ImGui_ImplSDL2_InitForOpenGL(_window, gl_context);
+  ImGui_ImplOpenGL2_Init();
+
+  // Setup Style
+  ImGui::StyleColorsDark();
+  //ImGui::StyleColorsClassic();
+
+  ImGui::GetStyle().Colors[ImGuiCol_TitleBg] = ImGui::GetStyle().Colors[ImGuiCol_TitleBgActive];
+
 
   SDL_GL_MakeCurrent(_window, gl_context);
 
@@ -616,6 +641,54 @@ void view::render_mouse()
     }
   }
 
+void view::imgui_ui()
+  {
+  // Start the Dear ImGui frame
+  ImGui_ImplOpenGL2_NewFrame();
+  ImGui_ImplSDL2_NewFrame(_window);
+  ImGui::NewFrame();
+
+  ImGuiWindowFlags window_flags = 0;
+  window_flags |= ImGuiWindowFlags_NoTitleBar;
+  window_flags |= ImGuiWindowFlags_NoMove;
+  window_flags |= ImGuiWindowFlags_NoCollapse;
+  window_flags |= ImGuiWindowFlags_MenuBar;
+  window_flags |= ImGuiWindowFlags_NoBackground;
+  window_flags |= ImGuiWindowFlags_NoResize;
+  window_flags |= ImGuiWindowFlags_NoScrollbar;
+  bool open = true;
+  static bool openProjectDialog = false;
+
+  ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
+  ImGui::SetNextWindowSize(ImVec2((float)_w, 10), ImGuiCond_Always);
+
+  if (ImGui::Begin("j3d", &open, window_flags))
+    {
+    if (!open)
+      _quit = true;
+    if (ImGui::BeginMenuBar())
+      {
+      if (ImGui::BeginMenu("File"))
+        {
+        if (ImGui::MenuItem("Open", ""))
+          {
+          openProjectDialog = true;
+          }
+        ImGui::Separator();
+        if (ImGui::MenuItem("Quit", ""))
+          {
+          _quit = true;
+          }
+        ImGui::EndMenu();
+        }
+      ImGui::EndMenuBar();
+      }
+    ImGui::End();
+    }
+
+  ImGui::Render();
+  }
+
 void view::quit()
   {
   _quit = true;
@@ -629,6 +702,7 @@ void view::loop()
     if (_window)
       {
       poll_for_events();
+      imgui_ui();
       do_canvas_mouse();
       }
 
@@ -648,6 +722,7 @@ void view::loop()
       {
       render_mouse();
       blit_screen_to_opengl_texture();
+      ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
       SDL_GL_SwapWindow(_window);
       }
     else
