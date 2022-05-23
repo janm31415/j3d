@@ -657,7 +657,7 @@ void view::imgui_ui()
   window_flags |= ImGuiWindowFlags_NoResize;
   window_flags |= ImGuiWindowFlags_NoScrollbar;
   bool open = true;
-  static bool openProjectDialog = false;
+  static bool openFileDialog = false;
 
   ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
   ImGui::SetNextWindowSize(ImVec2((float)_w, 10), ImGuiCond_Always);
@@ -672,7 +672,7 @@ void view::imgui_ui()
         {
         if (ImGui::MenuItem("Open", ""))
           {
-          openProjectDialog = true;
+          openFileDialog = true;
           }
         ImGui::Separator();
         if (ImGui::MenuItem("Quit", ""))
@@ -684,6 +684,14 @@ void view::imgui_ui()
       ImGui::EndMenuBar();
       }
     ImGui::End();
+    }
+
+  static ImGuiFs::Dialog open_file_dlg(false, true, false);
+  const char* openFileChosenPath = open_file_dlg.chooseFileDialog(openFileDialog, "", ".stl;.ply;.obj", "Open file", ImVec2(-1, -1), ImVec2(50, 50));
+  openFileDialog = false;
+  if (strlen(openFileChosenPath) > 0)
+    {
+    load_mesh_from_file(open_file_dlg.getChosenPath());
     }
 
   ImGui::Render();

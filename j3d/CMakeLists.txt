@@ -40,6 +40,11 @@ set(STB
 ../stb/stb_image_write.h
 )
 
+set(JSON
+${CMAKE_CURRENT_SOURCE_DIR}/../json/json.hpp
+)
+
+
 set(HDRS
 canvas.h
 camera.h
@@ -50,7 +55,9 @@ mesh.h
 mouse.h
 pc.h
 pixel.h
+pref_file.h
 scene.h
+settings.h
 trackball.h
 view.h
 )
@@ -66,7 +73,9 @@ matcap.cpp
 mesh.cpp
 pc.cpp
 pixel.cpp
+pref_file.cpp
 scene.cpp
+settings.cpp
 trackball.c
 view.cpp
 )
@@ -91,15 +100,17 @@ add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 include ("../jtk/jtk/jtk.cmake")
 
 if (WIN32)
-add_executable(j3d WIN32 ${HDRS} ${SRCS} ${RESOURCES} ${STB} ${IMGUI})
+add_executable(j3d WIN32 ${HDRS} ${SRCS} ${RESOURCES} ${STB} ${IMGUI} ${JSON})
 else (WIN32)
-add_executable(j3d ${HDRS} ${SRCS} ${RESOURCES} ${STB} ${IMGUI})
+add_executable(j3d ${HDRS} ${SRCS} ${RESOURCES} ${STB} ${IMGUI} ${JSON})
 endif (WIN32)
 
 source_group("Header Files" FILES ${HDRS})
 source_group("Source Files" FILES ${SRCS})
 source_group("stb" FILES ${STB})
 source_group("ImGui" FILES ${IMGUI})
+source_group("json" FILES ${JSON})
+
 
 
 target_include_directories(j3d
