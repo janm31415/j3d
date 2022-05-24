@@ -67,6 +67,8 @@ class view
     void load_next_file_in_folder();
     void load_previous_file_in_folder();
 
+    void info();
+
   private:
 
     void imgui_ui();    
@@ -125,4 +127,7 @@ class view
     bool _openMatCapFileDialog = false;
     bool _saveFileDialog = false;
     bool _screenshotDialog = false;
+    bool _showInfo = false;
+
+    double _last_render_time_in_seconds = 0.0;
   };

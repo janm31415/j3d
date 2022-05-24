@@ -345,11 +345,11 @@ void view::screenshot(const char* filename)
   const jtk::image<uint32_t>& im = _canvas.get_image();
   const uint32_t w = im.width();
   const uint32_t h = im.height();
-  uint32_t* raw = new uint32_t[w*h];
+  uint32_t* raw = new uint32_t[w * h];
   uint32_t* p_raw = raw;
   for (uint32_t y = 0; y < h; ++y)
     {
-    const uint32_t* p_im = im.data() + y*im.stride();
+    const uint32_t* p_im = im.data() + y * im.stride();
     for (uint32_t x = 0; x < w; ++x)
       *p_raw++ = *p_im++;
     }
@@ -363,7 +363,7 @@ void view::screenshot(const char* filename)
   else if (ext == "tga")
     stbi_write_tga(filename, w, h, 4, raw);
 
-  delete [] raw;
+  delete[] raw;
   }
 
 void view::save_file(const char* filename)
@@ -567,6 +567,10 @@ void view::process_keys()
     {
     make_matcap_sketch(_matcap);
     _refresh = true;
+    }
+  else if (_key.is_pressed(SDLK_i))
+    {
+    _showInfo = true;
     }
   else if (_key.is_pressed(SDLK_s))
     {
@@ -799,6 +803,34 @@ void view::blit_screen_to_opengl_texture()
     }
   }
 
+void view::info()
+  {
+  mesh* m = nullptr;
+  if (!_db.get_meshes().empty())
+    m = _db.get_meshes().front().second;
+  pc* p = nullptr;
+  if (!_db.get_pcs().empty())
+    p = _db.get_pcs().front().second;
+
+  if (!m && !p)
+    return;
+
+  ImGui::SetNextWindowSize(ImVec2(312, 400), ImGuiCond_FirstUseEver);
+  ImGui::SetNextWindowPos(ImVec2(14, 50), ImGuiCond_FirstUseEver);
+  if (!ImGui::Begin("Info", &_showInfo))
+    {
+    ImGui::End();
+    return;
+    }
+  uint32_t nr_of_vertices = (uint32_t)(m ? m->vertices.size() : p->vertices.size());
+  ImGui::InputScalar("Vertices", ImGuiDataType_U32, &nr_of_vertices, 0, 0, 0, ImGuiInputTextFlags_ReadOnly);
+  uint32_t nr_of_triangles = (uint32_t)(m ? m->triangles.size() : 0);
+  ImGui::InputScalar("Triangles", ImGuiDataType_U32, &nr_of_triangles, 0, 0, 0, ImGuiInputTextFlags_ReadOnly);
+  double fps = 1.0/_last_render_time_in_seconds;
+  ImGui::InputScalar("fps", ImGuiDataType_Double, &fps, 0, 0, 0, ImGuiInputTextFlags_ReadOnly);
+  ImGui::End();
+  }
+
 void view::resize_canvas(uint32_t canvas_w, uint32_t canvas_h)
   {
   _settings._canvas_w = canvas_w;
@@ -934,6 +966,11 @@ void view::imgui_ui()
           load_previous_file_in_folder();
           }
         ImGui::Separator();
+        if (ImGui::MenuItem("Info", "i"))
+          {
+          _showInfo = true;
+          }
+        ImGui::Separator();
         if (ImGui::MenuItem("Save as", "ctrl+s"))
           {
           _saveFileDialog = true;
@@ -1022,7 +1059,7 @@ void view::imgui_ui()
         }
       if (ImGui::BeginMenu("Colors"))
         {
-        float gradient_top_red = (_settings._gradient_top & 255)/255.f;
+        float gradient_top_red = (_settings._gradient_top & 255) / 255.f;
         float gradient_top_green = ((_settings._gradient_top >> 8) & 255) / 255.f;
         float gradient_top_blue = ((_settings._gradient_top >> 16) & 255) / 255.f;
         float gradient_bottom_red = (_settings._gradient_bottom & 255) / 255.f;
@@ -1113,6 +1150,10 @@ void view::imgui_ui()
     {
     screenshot(screenshotFileChosenPath);
     }
+
+  if (_showInfo)
+    info();
+
   //ImGui::ShowDemoWindow();
   ImGui::Render();
   }
@@ -1130,7 +1171,7 @@ void view::loop()
     if (_window)
       {
       poll_for_events();
-      imgui_ui();      
+      imgui_ui();
       do_canvas_mouse();
       process_keys();
       }
@@ -1140,7 +1181,11 @@ void view::loop()
       {
           {
           std::scoped_lock lock(_mut);
+          auto tic = std::chrono::high_resolution_clock::now();
           render_scene();
+          auto toc = std::chrono::high_resolution_clock::now();
+          std::chrono::duration<double> diff = toc - tic;
+          _last_render_time_in_seconds = diff.count();
           }
       }
 
