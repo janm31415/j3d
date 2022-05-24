@@ -93,12 +93,12 @@ view::view() : _w(1600), _h(900), _window(nullptr)
   _m.mouse_y = 0.f;
   _m.prev_mouse_x = 0.f;
   _m.prev_mouse_y = 0.f;
-  _m.wheel_rotation = 0.f;
-
-  make_matcap_red_wax(_matcap);
+  _m.wheel_rotation = 0.f;  
 
   std::string settings_path = get_settings_path();
   _settings = read_settings(settings_path.c_str());
+
+  make_matcap(_matcap, _settings._matcap_type, _settings._matcap_file.c_str());
 
   _canvas.resize(_settings._canvas_w, _settings._canvas_h);
   _canvas_pos_x = ((int32_t)_w - (int32_t)_canvas.width()) / 2;
@@ -593,6 +593,14 @@ void view::poll_for_events()
           }
         break;
         }
+        case SDLK_m:
+        {
+        if (_m.ctrl_pressed)
+          {
+          _openMatCapFileDialog = true;
+          }
+        break;
+        }
         case SDLK_b:
         {
         _settings._canvas_settings.one_bit = !_settings._canvas_settings.one_bit;
@@ -887,6 +895,38 @@ void view::imgui_ui()
           }
         ImGui::EndMenu();
         }
+      if (ImGui::BeginMenu("MatCap"))
+        {
+        if (ImGui::MenuItem("Red wax", "F1"))
+          {
+          make_matcap(_matcap, matcap_type::MATCAP_TYPE_INTERNAL_REDWAX, nullptr);
+          _settings._matcap_type = _matcap.type;
+          _refresh = true;
+          }
+        if (ImGui::MenuItem("Brown", "F2"))
+          {
+          make_matcap(_matcap, matcap_type::MATCAP_TYPE_INTERNAL_BROWN, nullptr);
+          _settings._matcap_type = _matcap.type;
+          _refresh = true;
+          }
+        if (ImGui::MenuItem("Gray", "F3"))
+          {
+          make_matcap(_matcap, matcap_type::MATCAP_TYPE_INTERNAL_GRAY, nullptr);
+          _settings._matcap_type = _matcap.type;
+          _refresh = true;
+          }
+        if (ImGui::MenuItem("Sketch", "F4"))
+          {
+          make_matcap(_matcap, matcap_type::MATCAP_TYPE_INTERNAL_SKETCH, nullptr);
+          _settings._matcap_type = _matcap.type;
+          _refresh = true;
+          }
+        if (ImGui::MenuItem("From file", "ctrl+m"))
+          {         
+          _openMatCapFileDialog = true;
+          }
+        ImGui::EndMenu();
+        }
       ImGui::EndMenuBar();
       }
     ImGui::End();
@@ -899,6 +939,17 @@ void view::imgui_ui()
     {
     clear_scene();
     load_file(open_file_dlg.getChosenPath());
+    }
+
+  static ImGuiFs::Dialog open_matcap_dlg(false, true, false);
+  const char* openMatCapChosenPath = open_matcap_dlg.chooseFileDialog(_openMatCapFileDialog, jtk::get_folder(_settings._matcap_file).c_str(), ".png;.jpg;.jpeg;.bmp;.tga;.ppm", "Open MatCap", ImVec2(-1, -1), ImVec2(50, 50));
+  _openMatCapFileDialog = false;
+  if (strlen(openMatCapChosenPath) > 0)
+    {    
+    make_matcap_from_file(_matcap, openMatCapChosenPath);
+    _settings._matcap_type = _matcap.type;
+    _settings._matcap_file = std::string(openMatCapChosenPath);
+    _refresh = true;
     }
 
   ImGui::Render();

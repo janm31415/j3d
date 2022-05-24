@@ -106,4 +106,5 @@ class view
     std::mutex _mut;
 
     bool _openFileDialog = false;
+    bool _openMatCapFileDialog = false;
   };

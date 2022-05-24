@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "canvas.h"
+#include "matcap.h"
 
 struct settings
   {
@@ -14,6 +15,8 @@ struct settings
   int32_t _index_in_folder;
   canvas::canvas_settings _canvas_settings;  
   uint32_t _canvas_w, _canvas_h;
+  matcap_type _matcap_type;
+  std::string _matcap_file;
   };
 
 
