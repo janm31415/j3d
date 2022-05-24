@@ -21,6 +21,7 @@ option(BUILD_SHARED_LIBS OFF)
 add_subdirectory(jtk)
 add_subdirectory(SDL2)
 add_subdirectory(j3d)
+add_subdirectory(trico)
 
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)

@@ -95,16 +95,16 @@ view::view() : _w(1600), _h(900), _window(nullptr)
   _m.prev_mouse_y = 0.f;
   _m.wheel_rotation = 0.f;
 
-  _canvas.resize(800, 600);
-  _canvas_pos_x = ((int32_t)_w - (int32_t)_canvas.width()) / 2;
-  if (_canvas_pos_x & 3)
-    _canvas_pos_x += 4 - (_canvas_pos_x & 3);
-  _canvas_pos_y = ((int32_t)_h - (int32_t)_canvas.height()) / 2;
-
   make_matcap_red_wax(_matcap);
 
   std::string settings_path = get_settings_path();
   _settings = read_settings(settings_path.c_str());
+
+  _canvas.resize(_settings._canvas_w, _settings._canvas_h);
+  _canvas_pos_x = ((int32_t)_w - (int32_t)_canvas.width()) / 2;
+  if (_canvas_pos_x & 3)
+    _canvas_pos_x += 4 - (_canvas_pos_x & 3);
+  _canvas_pos_y = ((int32_t)_h - (int32_t)_canvas.height()) / 2;
 
   _suspend = false;
   _resume = false;
@@ -279,6 +279,8 @@ int64_t view::load_file(const char* filename)
   if (id >= 0)
     {
     ::update_current_folder(_settings, filename);
+    std::string window_title = "j3d - " + std::string(filename);
+    SDL_SetWindowTitle(this->_window, window_title.c_str());
     }
   return id;
   }
@@ -522,6 +524,16 @@ void view::poll_for_events()
         }
         case SDLK_4:
         {
+        resize_canvas(1280, 800);
+        break;
+        }
+        case SDLK_5:
+        {
+        resize_canvas(1440, 900);
+        break;
+        }
+        case SDLK_6:
+        {
         resize_canvas(1600, 900);
         break;
         }
@@ -571,6 +583,14 @@ void view::poll_for_events()
         {
         _settings._canvas_settings.edges = !_settings._canvas_settings.edges;
         _refresh = true;
+        break;
+        }
+        case SDLK_o:
+        {
+        if (_m.ctrl_pressed)
+          {
+          _openFileDialog = true;
+          }
         break;
         }
         case SDLK_b:
@@ -702,6 +722,8 @@ void view::blit_screen_to_opengl_texture()
 
 void view::resize_canvas(uint32_t canvas_w, uint32_t canvas_h)
   {
+  _settings._canvas_w = canvas_w;
+  _settings._canvas_h = canvas_h;
   _refresh = true;
   if (canvas_w > _w)
     canvas_w = _w;
@@ -721,9 +743,14 @@ bool view::mouse_in_canvas() const
   }
 
 void view::do_canvas_mouse()
-  {
-  if (!mouse_in_canvas())
+  {  
+  if (ImGui::GetIO().WantCaptureMouse)
     return;
+  if (!mouse_in_canvas())
+    {
+    if (_m.left_button_down || _m.right_button_down || _m.wheel_down)
+      return;
+    }
   _canvas.do_mouse(_refresh, _m, _scene, (float)_canvas_pos_x, (float)_canvas_pos_y);
   }
 
@@ -789,7 +816,12 @@ void view::imgui_ui()
   window_flags |= ImGuiWindowFlags_NoResize;
   window_flags |= ImGuiWindowFlags_NoScrollbar;
   bool open = true;
-  static bool openFileDialog = false;
+  bool canvas_size_512x512 = (_settings._canvas_w == 512 && _settings._canvas_h == 512);
+  bool canvas_size_800x600 = (_settings._canvas_w == 800 && _settings._canvas_h == 600);
+  bool canvas_size_1024x768 = (_settings._canvas_w == 1024 && _settings._canvas_h == 768);
+  bool canvas_size_1280x800 = (_settings._canvas_w == 1280 && _settings._canvas_h == 800);
+  bool canvas_size_1440x900 = (_settings._canvas_w == 1440 && _settings._canvas_h == 900);
+  bool canvas_size_1600x900 = (_settings._canvas_w == 1600 && _settings._canvas_h == 900);
 
   ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
   ImGui::SetNextWindowSize(ImVec2((float)_w, 10), ImGuiCond_Always);
@@ -800,16 +832,58 @@ void view::imgui_ui()
       _quit = true;
     if (ImGui::BeginMenuBar())
       {
-      if (ImGui::BeginMenu("File"))
+      if (ImGui::BeginMenu("File", ""))
         {
-        if (ImGui::MenuItem("Open", ""))
+        if (ImGui::MenuItem("Open", "ctrl+o"))
           {
-          openFileDialog = true;
+          _openFileDialog = true;
+          }
+        if (ImGui::MenuItem("Next file in folder", "space"))
+          {
+          load_next_file_in_folder();
+          }
+        if (ImGui::MenuItem("Previous file in folder", "backspace"))
+          {
+          load_previous_file_in_folder();
           }
         ImGui::Separator();
-        if (ImGui::MenuItem("Quit", ""))
+        if (ImGui::MenuItem("Quit", "Esc"))
           {
           _quit = true;
+          }
+        ImGui::EndMenu();
+        }
+      if (ImGui::BeginMenu("Canvas"))
+        {
+        if (ImGui::MenuItem("512x512", "1", &canvas_size_512x512))
+          resize_canvas(512, 512);
+        if (ImGui::MenuItem("800x600", "2", &canvas_size_800x600))
+          resize_canvas(800, 600);
+        if (ImGui::MenuItem("1024x768", "3", &canvas_size_1024x768))
+          resize_canvas(1024, 768);
+        if (ImGui::MenuItem("1280x800", "4", &canvas_size_1280x800))
+          resize_canvas(1280, 800);
+        if (ImGui::MenuItem("1440x900", "5", &canvas_size_1440x900))
+          resize_canvas(1440, 900);
+        if (ImGui::MenuItem("1600x900", "6", &canvas_size_1600x900))
+          resize_canvas(1600, 900);
+        ImGui::Separator();
+        if (ImGui::MenuItem("One bit", "b", &_settings._canvas_settings.one_bit))
+          _refresh = true;
+        if (ImGui::MenuItem("Shading", "l", &_settings._canvas_settings.shading))
+          _refresh = true;
+        if (ImGui::MenuItem("Texture", "t", &_settings._canvas_settings.textured))
+          _refresh = true;          
+        if (ImGui::MenuItem("Wireframe", "w", &_settings._canvas_settings.wireframe))
+          _refresh = true;
+        if (ImGui::MenuItem("Shadow", "s", &_settings._canvas_settings.shadow))
+          _refresh = true;
+        if (ImGui::MenuItem("Edges", "e", &_settings._canvas_settings.edges))
+          _refresh = true;
+        ImGui::Separator();
+        if (ImGui::MenuItem("Unzoom", "u"))
+          {
+          unzoom();
           }
         ImGui::EndMenu();
         }
@@ -819,8 +893,8 @@ void view::imgui_ui()
     }
 
   static ImGuiFs::Dialog open_file_dlg(false, true, false);  
-  const char* openFileChosenPath = open_file_dlg.chooseFileDialog(openFileDialog, _settings._current_folder.c_str(), ".stl;.ply;.obj", "Open file", ImVec2(-1, -1), ImVec2(50, 50));
-  openFileDialog = false;
+  const char* openFileChosenPath = open_file_dlg.chooseFileDialog(_openFileDialog, _settings._current_folder.c_str(), ".stl;.ply;.obj;.xyz;.pts;.trc", "Open file", ImVec2(-1, -1), ImVec2(50, 50));
+  _openFileDialog = false;
   if (strlen(openFileChosenPath) > 0)
     {
     clear_scene();

@@ -35,14 +35,16 @@ class pref_file_element
     pref_file_element AddValue(const std::string& value);
     pref_file_element AddValue(const char* value);
     pref_file_element AddValue(double value);
-    pref_file_element AddValue(int value);
+    pref_file_element AddValue(int32_t value);
+    pref_file_element AddValue(uint32_t value);
     pref_file_element AddValue(int64_t value);
     pref_file_element AddValue(uint64_t value);
     pref_file_element AddValue(bool value);
     pref_file_element PushValue(const std::string& value);
     pref_file_element PushValue(const char* value);
     pref_file_element PushValue(double value);
-    pref_file_element PushValue(int value);
+    pref_file_element PushValue(int32_t value);
+    pref_file_element PushValue(uint32_t value);
     pref_file_element PushValue(int64_t value);
     pref_file_element PushValue(uint64_t value);
     pref_file_element PushValue(bool value);

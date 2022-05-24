@@ -128,6 +128,7 @@ target_link_libraries(j3d
     ${OPENGL_LIBRARIES}    
     SDL2-static
     SDL2main
+    trico
     )
     
 

@@ -23,6 +23,7 @@ std::vector<std::pair<std::string, pc_filetype>> get_valid_pc_extensions()
   extensions.emplace_back(std::string("obj"), pc_filetype::PC_FILETYPE_OBJ);
   extensions.emplace_back(std::string("pts"), pc_filetype::PC_FILETYPE_PTS);
   extensions.emplace_back(std::string("xyz"), pc_filetype::PC_FILETYPE_XYZ);
+  extensions.emplace_back(std::string("trc"), pc_filetype::PC_FILETYPE_TRC);
 
   return extensions;
   }
@@ -75,6 +76,16 @@ bool read_from_file(pc& point_cloud, const std::string& filename)
         case pc_filetype::PC_FILETYPE_XYZ:
         {
         if (!read_xyz(filename.c_str(), point_cloud.vertices))
+          return false;
+        if (point_cloud.vertices.empty())
+          return false;
+        break;
+        }
+        case pc_filetype::PC_FILETYPE_TRC:
+        {
+        std::vector<jtk::vec3<uint32_t>> triangles;
+        std::vector<jtk::vec3<jtk::vec2<float>>> uv;
+        if (!read_trc(filename.c_str(), point_cloud.vertices, point_cloud.normals, point_cloud.vertex_colors, triangles, uv))
           return false;
         if (point_cloud.vertices.empty())
           return false;

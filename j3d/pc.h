@@ -8,12 +8,15 @@
 #include <memory>
 #include <string>
 
+#include "trico/trico/trico.h"
+
 enum class pc_filetype
   {
   PC_FILETYPE_PLY,
   PC_FILETYPE_OBJ,
   PC_FILETYPE_PTS,
   PC_FILETYPE_XYZ,
+  PC_FILETYPE_TRC,
   };
 
 struct pc

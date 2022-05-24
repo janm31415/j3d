@@ -13,6 +13,7 @@ struct settings
   std::vector<std::string> _current_folder_files;
   int32_t _index_in_folder;
   canvas::canvas_settings _canvas_settings;  
+  uint32_t _canvas_w, _canvas_h;
   };
 
 

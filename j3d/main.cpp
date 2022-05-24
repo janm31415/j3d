@@ -45,6 +45,7 @@ int main(int argc, char** argv)
     return -1;
   {
   view v;
+  v.prepare_window();
   for (int i = 1; i < argc; ++i)
     {
     int64_t id = v.load_file(argv[i]);
@@ -53,7 +54,6 @@ int main(int argc, char** argv)
     //  v.update_current_folder(std::string(argv[i]));
     //  }
     }
-  v.prepare_window();
   v.loop();
   }
   SDL_Quit();

@@ -11,6 +11,8 @@ settings::settings()
   _canvas_settings.shading = true;
   _canvas_settings.textured = true;
   _canvas_settings.vertexcolors = true;
+  _canvas_w = 800;
+  _canvas_h = 600;
   _executable_path = jtk::get_executable_path();
   _index_in_folder = -1;
   }
@@ -28,6 +30,8 @@ settings read_settings(const char* filename)
   f["textured"] >> s._canvas_settings.textured;
   f["vertexcolors"] >> s._canvas_settings.vertexcolors;
   f["current_folder"] >> s._current_folder;
+  f["canvas_w"] >> s._canvas_w;
+  f["canvas_h"] >> s._canvas_h;
 
   s._current_folder_files = jtk::get_files_from_directory(s._current_folder, false);
 
@@ -45,6 +49,8 @@ void write_settings(const settings& s, const char* filename)
   f << "textured" << s._canvas_settings.textured;
   f << "vertexcolors" << s._canvas_settings.vertexcolors;
   f << "current_folder" << s._current_folder;
+  f << "canvas_w" << s._canvas_w;
+  f << "canvas_h" << s._canvas_h;
   f.release();
   }
 

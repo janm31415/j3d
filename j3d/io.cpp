@@ -8,6 +8,8 @@
 #include "stb_image.h"
 #include "stb_image_write.h"
 
+#include "trico/trico/trico.h"
+
 bool read_ply(const char* filename, std::vector<jtk::vec3<float>>& vertices, std::vector<jtk::vec3<float>>& normals, std::vector<uint32_t>& clrs, std::vector<jtk::vec3<uint32_t>>& triangles, std::vector<jtk::vec3<jtk::vec2<float>>>& uv)
   {
   return jtk::read_ply(filename, vertices, normals, clrs, triangles, uv);
@@ -16,6 +18,172 @@ bool read_ply(const char* filename, std::vector<jtk::vec3<float>>& vertices, std
 bool write_ply(const char* filename, const std::vector<jtk::vec3<float>>& vertices, const std::vector<jtk::vec3<float>>& normals, const std::vector<uint32_t>& clrs, const std::vector<jtk::vec3<uint32_t>>& triangles, const std::vector<jtk::vec3<jtk::vec2<float>>>& uv)
   {
   return jtk::write_ply(filename, vertices, normals, clrs, triangles, uv);
+  }
+
+
+bool read_trc(const char* filename, std::vector<jtk::vec3<float>>& vertices, std::vector<jtk::vec3<float>>& normals, std::vector<uint32_t>& clrs, std::vector<jtk::vec3<uint32_t>>& triangles, std::vector<jtk::vec3<jtk::vec2<float>>>& uv)
+  {
+  long long size = jtk::file_size(filename);
+  if (size < 0)
+    {
+    std::cout << "There was an error reading file " << filename << std::endl;
+    return false;
+    }
+  FILE* f = fopen(filename, "rb");
+  if (!f)
+    {
+    std::cout << "Cannot open file: " << filename << std::endl;
+    return false;
+    }
+  char* buffer = (char*)malloc(size);
+  long long fl = (long long)fread(buffer, 1, size, f);
+  if (fl != size)
+    {
+    std::cout << "There was an error reading file " << filename << std::endl;
+    fclose(f);
+    return false;
+    }
+  fclose(f);
+
+  void* arch = trico_open_archive_for_reading((const uint8_t*)buffer, size);
+  if (!arch)
+    {
+    std::cout << "The input file " << filename << " is not a trico archive." << std::endl;
+    return false;
+    }
+
+  enum trico_stream_type st = trico_get_next_stream_type(arch);
+  while (!st == trico_empty)
+    {
+    switch (st)
+      {
+      case trico_vertex_float_stream:
+      {
+      vertices.resize(trico_get_number_of_vertices(arch));
+      float* vert = (float*)vertices.data();
+      if (!trico_read_vertices(arch, &vert))
+        {
+        std::cout << "Something went wrong reading the vertices" << std::endl;
+        trico_close_archive(arch);
+        free(buffer);
+        return false;
+        }
+      break;
+      }
+      case trico_triangle_uint32_stream:
+      {
+      triangles.resize(trico_get_number_of_triangles(arch));
+      uint32_t* tria = (uint32_t*)triangles.data();
+      if (!trico_read_triangles(arch, &tria))
+        {
+        std::cout << "Something went wrong reading the triangles" << std::endl;
+        trico_close_archive(arch);
+        free(buffer);
+        return false;
+        }
+      break;
+      }
+      case trico_vertex_color_stream:
+      {
+      clrs.resize(trico_get_number_of_colors(arch));
+      uint32_t* vertex_colors = (uint32_t*)clrs.data();
+      if (!trico_read_vertex_colors(arch, &vertex_colors))
+        {
+        std::cout << "Something went wrong reading the vertex colors" << std::endl;
+        trico_close_archive(arch);
+        free(buffer);
+        return false;
+        }
+      break;
+      }
+      case trico_uv_per_triangle_float_stream:
+      {
+      uv.resize(trico_get_number_of_uvs(arch));
+      float* uvs = (float*)uv.data();
+      if (!trico_read_uv_per_triangle(arch, &uvs))
+        {
+        std::cout << "Something went wrong reading the uv coordinates" << std::endl;
+        trico_close_archive(arch);
+        free(buffer);
+        return false;
+        }
+      break;
+      }
+      case trico_vertex_normal_float_stream:
+      {
+      normals.resize(trico_get_number_of_normals(arch));
+      float* norm = (float*)normals.data();
+      if (!trico_read_vertex_normals(arch, &norm))
+        {
+        std::cout << "Something went wrong reading the normals" << std::endl;
+        trico_close_archive(arch);
+        free(buffer);
+        return false;
+        }
+      break;
+      }
+      default:
+      {
+      trico_skip_next_stream(arch);
+      break;
+      }
+      }
+
+    st = trico_get_next_stream_type(arch);
+    }
+
+
+  trico_close_archive(arch);
+  free(buffer);
+
+  return true;
+  }
+
+
+bool write_trc(const char* filename, const std::vector<jtk::vec3<float>>& vertices, const std::vector<jtk::vec3<float>>& normals, const std::vector<uint32_t>& clrs, const std::vector<jtk::vec3<uint32_t>>& triangles, const std::vector<jtk::vec3<jtk::vec2<float>>>& uv)
+  {
+  if (vertices.empty())
+    return false;
+  void* arch = trico_open_archive_for_writing(1024 * 1024);
+  if (!trico_write_vertices(arch, (float*)vertices.data(), (uint32_t)vertices.size()))
+    {
+    std::cout << "Something went wrong when writing the vertices\n";
+    return false;
+    }
+  if (!clrs.empty() && !trico_write_vertex_colors(arch, (uint32_t*)clrs.data(), (uint32_t)clrs.size()))
+    {
+    std::cout << "Something went wrong when writing the vertex colors\n";
+    return false;
+    }
+  if (!normals.empty() && !trico_write_vertex_normals(arch, (float*)normals.data(), (uint32_t)normals.size()))
+    {
+    std::cout << "Something went wrong when writing the normals\n";
+    return false;
+    }
+  if (!triangles.empty() && !trico_write_triangles(arch, (uint32_t*)triangles.data(), (uint32_t)triangles.size()))
+    {
+    std::cout << "Something went wrong when writing the triangles\n";
+    return false;
+    }
+  if (!uv.empty() && !trico_write_uv_per_triangle(arch, (float*)uv.data(), (uint32_t)uv.size()))
+    {
+    std::cout << "Something went wrong when writing the uv positions\n";
+    return false;
+    }
+
+  FILE* f = fopen(filename, "wb");
+  if (!f)
+    {
+    std::cout << "Cannot write to file " << filename << std::endl;
+    return false;
+    }
+
+  fwrite((const void*)trico_get_buffer_pointer(arch), trico_get_size(arch), 1, f);
+  fclose(f);
+
+  trico_close_archive(arch);
+
+  return true;
   }
 
 namespace

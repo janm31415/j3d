@@ -104,4 +104,6 @@ class view
     matcap _matcap;
 
     std::mutex _mut;
+
+    bool _openFileDialog = false;
   };
