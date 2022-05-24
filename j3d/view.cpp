@@ -570,7 +570,7 @@ void view::process_keys()
     }
   else if (_key.is_pressed(SDLK_i))
     {
-    _showInfo = true;
+    _showInfo = !_showInfo;
     }
   else if (_key.is_pressed(SDLK_s))
     {
@@ -823,11 +823,17 @@ void view::info()
     return;
     }
   uint32_t nr_of_vertices = (uint32_t)(m ? m->vertices.size() : p->vertices.size());
-  ImGui::InputScalar("Vertices", ImGuiDataType_U32, &nr_of_vertices, 0, 0, 0, ImGuiInputTextFlags_ReadOnly);
+  ImGui::InputScalar("#vertices", ImGuiDataType_U32, &nr_of_vertices, 0, 0, 0, ImGuiInputTextFlags_ReadOnly);
   uint32_t nr_of_triangles = (uint32_t)(m ? m->triangles.size() : 0);
-  ImGui::InputScalar("Triangles", ImGuiDataType_U32, &nr_of_triangles, 0, 0, 0, ImGuiInputTextFlags_ReadOnly);
+  ImGui::InputScalar("#triangles", ImGuiDataType_U32, &nr_of_triangles, 0, 0, 0, ImGuiInputTextFlags_ReadOnly);
   double fps = 1.0/_last_render_time_in_seconds;
   ImGui::InputScalar("fps", ImGuiDataType_Double, &fps, 0, 0, 0, ImGuiInputTextFlags_ReadOnly);
+  float minbb[3] = {_scene.min_bb[0], _scene.min_bb[1], _scene.min_bb[2]};
+  ImGui::InputFloat3("min", minbb, "%.3f", ImGuiInputTextFlags_ReadOnly);
+  float maxbb[3] = { _scene.max_bb[0], _scene.max_bb[1], _scene.max_bb[2] };
+  ImGui::InputFloat3("max", maxbb, "%.3f", ImGuiInputTextFlags_ReadOnly);
+  float sizebb[3] = {maxbb[0]-minbb[0], maxbb[1] - minbb[1], maxbb[2] - minbb[2]};
+  ImGui::InputFloat3("size", sizebb, "%.3f", ImGuiInputTextFlags_ReadOnly);
   ImGui::End();
   }
 
