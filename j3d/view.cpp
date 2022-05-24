@@ -93,7 +93,7 @@ view::view() : _w(1600), _h(900), _window(nullptr)
   _m.mouse_y = 0.f;
   _m.prev_mouse_x = 0.f;
   _m.prev_mouse_y = 0.f;
-  _m.wheel_rotation = 0.f;  
+  _m.wheel_rotation = 0.f;
 
   std::string settings_path = get_settings_path();
   _settings = read_settings(settings_path.c_str());
@@ -237,7 +237,7 @@ int64_t view::load_pc_from_file(const char* filename)
   return (int64_t)id;
   }
 
-bool view::file_has_known_extension(const char* filename)
+bool view::file_has_known_mesh_extension(const char* filename)
   {
   std::string ext = jtk::get_extension(std::string(filename));
   if (ext.empty())
@@ -250,6 +250,17 @@ bool view::file_has_known_extension(const char* filename)
     if (valid_ext.first == ext)
       return true;
     }
+
+  return false;
+  }
+
+bool view::file_has_known_pc_extension(const char* filename)
+  {
+  std::string ext = jtk::get_extension(std::string(filename));
+  if (ext.empty())
+    return false;
+  std::transform(ext.begin(), ext.end(), ext.begin(), [](char ch) {return (char)::tolower(ch); });
+
   static std::vector<std::pair<std::string, pc_filetype>> valid_pc_extensions = get_valid_pc_extensions();
   for (const auto& valid_ext : valid_pc_extensions)
     {
@@ -257,6 +268,11 @@ bool view::file_has_known_extension(const char* filename)
       return true;
     }
   return false;
+  }
+
+bool view::file_has_known_extension(const char* filename)
+  {
+  return file_has_known_mesh_extension(filename) || file_has_known_pc_extension(filename);
   }
 
 int64_t view::load_file(const char* filename)
@@ -283,6 +299,44 @@ int64_t view::load_file(const char* filename)
     SDL_SetWindowTitle(this->_window, window_title.c_str());
     }
   return id;
+  }
+
+void view::save_mesh_to_file(int64_t id, const char* filename)
+  {
+  mesh* m = _db.get_mesh((uint32_t)id);
+  if (m && file_has_known_mesh_extension(filename))
+    {
+    std::string fn(filename);
+    if (write_to_file(*m, fn))
+      {
+      ::update_current_folder(_settings, filename);
+      std::string window_title = "j3d - " + std::string(filename);
+      SDL_SetWindowTitle(this->_window, window_title.c_str());
+      }
+    }
+  }
+
+void view::save_pc_to_file(int64_t id, const char* filename)
+  {
+  pc* p = _db.get_pc((uint32_t)id);
+  if (p && file_has_known_pc_extension(filename))
+    {
+    std::string fn(filename);
+    if (write_to_file(*p, fn))
+      {
+      ::update_current_folder(_settings, filename);
+      std::string window_title = "j3d - " + std::string(filename);
+      SDL_SetWindowTitle(this->_window, window_title.c_str());
+      }
+    }
+  }
+
+void view::save_file(const char* filename)
+  {
+  if (!_db.get_meshes().empty())
+    save_mesh_to_file(_db.get_meshes().front().first, filename);
+  else if (!_db.get_pcs().empty())
+    save_pc_to_file(_db.get_pcs().front().first, filename);
   }
 
 void view::clear_scene()
@@ -415,14 +469,140 @@ void view::unzoom()
   _refresh = true;
   }
 
+void view::process_keys()
+  {
+  if (ImGui::GetIO().WantCaptureKeyboard)
+    return;
+  if (_key.is_pressed(SDLK_ESCAPE))
+    {
+    _quit = true;
+    }
+  else if (_key.is_pressed(SDLK_SPACE))
+    {
+    load_next_file_in_folder();
+    }
+  else if (_key.is_pressed(SDLK_BACKSPACE))
+    {
+    load_previous_file_in_folder();
+    }
+  else if (_key.is_pressed(SDLK_1))
+    {
+    resize_canvas(512, 512);
+    }
+  else if (_key.is_pressed(SDLK_2))
+    {
+    resize_canvas(800, 600);
+    }
+  else if (_key.is_pressed(SDLK_3))
+    {
+    resize_canvas(1024, 768);
+    }
+  else if (_key.is_pressed(SDLK_4))
+    {
+    resize_canvas(1280, 800);
+    }
+  else if (_key.is_pressed(SDLK_5))
+    {
+    resize_canvas(1440, 900);
+    }
+  else if (_key.is_pressed(SDLK_6))
+    {
+    resize_canvas(1600, 900);
+    }
+  else if (_key.is_pressed(SDLK_F1))
+    {
+    make_matcap_red_wax(_matcap);
+    _refresh = true;
+    }
+  else if (_key.is_pressed(SDLK_F2))
+    {
+    make_matcap_brown(_matcap);
+    _refresh = true;
+    }
+  else if (_key.is_pressed(SDLK_F3))
+    {
+    make_matcap_gray(_matcap);
+    _refresh = true;
+    }
+  else if (_key.is_pressed(SDLK_F4))
+    {
+    make_matcap_sketch(_matcap);
+    _refresh = true;
+    }
+  else if (_key.is_pressed(SDLK_s))
+    {
+    if (_m.ctrl_pressed)
+      {
+      _saveFileDialog = true;
+      }
+    else
+      {
+      _settings._canvas_settings.shadow = !_settings._canvas_settings.shadow;
+      _refresh = true;
+      }
+    }
+  else if (_key.is_pressed(SDLK_t))
+    {
+    _settings._canvas_settings.textured = !_settings._canvas_settings.textured;
+    _refresh = true;
+    }
+  else if (_key.is_pressed(SDLK_l))
+    {
+    _settings._canvas_settings.shading = !_settings._canvas_settings.shading;
+    _refresh = true;
+    }
+  else if (_key.is_pressed(SDLK_e))
+    {
+    _settings._canvas_settings.edges = !_settings._canvas_settings.edges;
+    _refresh = true;
+    }
+  else if (_key.is_pressed(SDLK_o))
+    {
+    if (_m.ctrl_pressed)
+      {
+      _openFileDialog = true;
+      }
+    }
+  else if (_key.is_pressed(SDLK_m))
+    {
+    if (_m.ctrl_pressed)
+      {
+      _openMatCapFileDialog = true;
+      }
+    }
+  else if (_key.is_pressed(SDLK_b))
+    {
+    _settings._canvas_settings.one_bit = !_settings._canvas_settings.one_bit;
+    _refresh = true;
+    }
+  else if (_key.is_pressed(SDLK_u))
+    {
+    ::unzoom(_scene);
+    _refresh = true;
+    }
+  else if (_key.is_pressed(SDLK_v))
+    {
+    _settings._canvas_settings.vertexcolors = !_settings._canvas_settings.vertexcolors;
+    _refresh = true;
+    }
+  else if (_key.is_pressed(SDLK_w))
+    {
+    _settings._canvas_settings.wireframe = !_settings._canvas_settings.wireframe;
+    _refresh = true;
+    }
+  }
+
 void view::poll_for_events()
   {
   _m.right_button_down = false;
   _m.left_button_down = false;
   _m.wheel_down = false;
+  _key.initialise_for_new_events();
   SDL_Event event;
   while (SDL_PollEvent(&event))
     {
+    ImGui_ImplSDL2_ProcessEvent(&event);
+    _key.handle_event(event);
     if (event.type == SDL_QUIT)
       {
       SDL_FlushEvents(SDL_FIRSTEVENT, SDL_LASTEVENT);
@@ -486,167 +666,12 @@ void view::poll_for_events()
       {
       switch (event.key.keysym.sym)
         {
-        case SDLK_ESCAPE:
-        {
-        _quit = true;
-        break;
-        }
         case SDLK_LCTRL:
         case SDLK_RCTRL:
         {
         _m.ctrl_pressed = false;
         break;
         }
-        case SDLK_SPACE:
-        {
-        load_next_file_in_folder();
-        break;
-        }
-        case SDLK_BACKSPACE:
-        {
-        load_previous_file_in_folder();
-        break;
-        }
-        case SDLK_1:
-        {
-        resize_canvas(512, 512);
-        break;
-        }
-        case SDLK_2:
-        {
-        resize_canvas(800, 600);
-        break;
-        }
-        case SDLK_3:
-        {
-        resize_canvas(1024, 768);
-        break;
-        }
-        case SDLK_4:
-        {
-        resize_canvas(1280, 800);
-        break;
-        }
-        case SDLK_5:
-        {
-        resize_canvas(1440, 900);
-        break;
-        }
-        case SDLK_6:
-        {
-        resize_canvas(1600, 900);
-        break;
-        }
-        case SDLK_F1:
-        {
-        make_matcap_red_wax(_matcap);
-        _refresh = true;
-        break;
-        }
-        case SDLK_F2:
-        {
-        make_matcap_brown(_matcap);
-        _refresh = true;
-        break;
-        }        
-        case SDLK_F3:
-        {
-        make_matcap_gray(_matcap);
-        _refresh = true;
-        break;
-        }
-        case SDLK_F4:
-        {
-        make_matcap_sketch(_matcap);
-        _refresh = true;
-        break;
-        }
-        case SDLK_s:
-        {
-        _settings._canvas_settings.shadow = !_settings._canvas_settings.shadow;
-        _refresh = true;
-        break;
-        }
-        case SDLK_t:
-        {
-        _settings._canvas_settings.textured = !_settings._canvas_settings.textured;
-        _refresh = true;
-        break;
-        }
-        case SDLK_l:
-        {
-        _settings._canvas_settings.shading = !_settings._canvas_settings.shading;
-        _refresh = true;
-        break;
-        }
-        case SDLK_e:
-        {
-        _settings._canvas_settings.edges = !_settings._canvas_settings.edges;
-        _refresh = true;
-        break;
-        }
-        case SDLK_o:
-        {
-        if (_m.ctrl_pressed)
-          {
-          _openFileDialog = true;
-          }
-        break;
-        }
-        case SDLK_m:
-        {
-        if (_m.ctrl_pressed)
-          {
-          _openMatCapFileDialog = true;
-          }
-        break;
-        }
-        case SDLK_b:
-        {
-        _settings._canvas_settings.one_bit = !_settings._canvas_settings.one_bit;
-        _refresh = true;
-        break;
-        }
-        case SDLK_u:
-        {
-        ::unzoom(_scene);
-        _refresh = true;
-        break;
-        }
-        case SDLK_v:
-        {
-        _settings._canvas_settings.vertexcolors = !_settings._canvas_settings.vertexcolors;
-        _refresh = true;
-        break;
-        }
-        case SDLK_w:
-        {
-        _settings._canvas_settings.wireframe = !_settings._canvas_settings.wireframe;
-        _refresh = true;
-        break;
-        }
-        /*
-        case SDLK_SPACE:
-        {
-        if (mouse_in_canvas())
-          {
-          pixel p_actual;
-          _canvas.get_pixel(p_actual, _m, (float)_canvas_pos_x, (float)_canvas_pos_y);
-          //if (p_actual.object_id != (uint32_t)(-1))
-          if (p_actual.db_id)
-            {
-            uint32_t closest_v = get_closest_vertex(p_actual, get_vertices(_db, p_actual.db_id), get_triangles(_db, p_actual.db_id));
-            auto V = (*get_vertices(_db, p_actual.db_id))[closest_v];
-            std::cout << std::endl;
-            std::cout << "---------------------------------------" << std::endl;
-            std::cout << "database id: " << p_actual.db_id << std::endl;
-            std::cout << "vertex index: " << closest_v << std::endl;
-            std::cout << "vertex coordinates: " << V[0] << ", " << V[1] << ", " << V[2] << ")" << std::endl;
-            std::cout << "---------------------------------------" << std::endl;
-            }
-          }
-        break;
-        }*/
         }
       }
     if (event.type == SDL_WINDOWEVENT)
@@ -751,7 +776,7 @@ bool view::mouse_in_canvas() const
   }
 
 void view::do_canvas_mouse()
-  {  
+  {
   if (ImGui::GetIO().WantCaptureMouse)
     return;
   if (!mouse_in_canvas())
@@ -855,6 +880,11 @@ void view::imgui_ui()
           load_previous_file_in_folder();
           }
         ImGui::Separator();
+        if (ImGui::MenuItem("Save as", "ctrl+s"))
+          {
+          _saveFileDialog = true;
+          }
+        ImGui::Separator();
         if (ImGui::MenuItem("Quit", "Esc"))
           {
           _quit = true;
@@ -878,15 +908,17 @@ void view::imgui_ui()
         ImGui::Separator();
         if (ImGui::MenuItem("One bit", "b", &_settings._canvas_settings.one_bit))
           _refresh = true;
-        if (ImGui::MenuItem("Shading", "l", &_settings._canvas_settings.shading))
+        if (ImGui::MenuItem("Light shading", "l", &_settings._canvas_settings.shading))
           _refresh = true;
         if (ImGui::MenuItem("Texture", "t", &_settings._canvas_settings.textured))
-          _refresh = true;          
+          _refresh = true;
         if (ImGui::MenuItem("Wireframe", "w", &_settings._canvas_settings.wireframe))
           _refresh = true;
         if (ImGui::MenuItem("Shadow", "s", &_settings._canvas_settings.shadow))
           _refresh = true;
         if (ImGui::MenuItem("Edges", "e", &_settings._canvas_settings.edges))
+          _refresh = true;
+        if (ImGui::MenuItem("Vertex colors", "v", &_settings._canvas_settings.vertexcolors))
           _refresh = true;
         ImGui::Separator();
         if (ImGui::MenuItem("Unzoom", "u"))
@@ -922,7 +954,7 @@ void view::imgui_ui()
           _refresh = true;
           }
         if (ImGui::MenuItem("From file", "ctrl+m"))
-          {         
+          {
           _openMatCapFileDialog = true;
           }
         ImGui::EndMenu();
@@ -932,8 +964,8 @@ void view::imgui_ui()
     ImGui::End();
     }
 
-  static ImGuiFs::Dialog open_file_dlg(false, true, false);  
-  const char* openFileChosenPath = open_file_dlg.chooseFileDialog(_openFileDialog, _settings._current_folder.c_str(), ".stl;.ply;.obj;.xyz;.pts;.trc", "Open file", ImVec2(-1, -1), ImVec2(50, 50));
+  static ImGuiFs::Dialog open_file_dlg(false, true, false);
+  const char* openFileChosenPath = open_file_dlg.chooseFileDialog(_openFileDialog, _settings._current_folder.c_str(), ".ply;.stl;.obj;.trc;.xyz;.pts;", "Open file", ImVec2(-1, -1), ImVec2(50, 50));
   _openFileDialog = false;
   if (strlen(openFileChosenPath) > 0)
     {
@@ -945,11 +977,19 @@ void view::imgui_ui()
   const char* openMatCapChosenPath = open_matcap_dlg.chooseFileDialog(_openMatCapFileDialog, jtk::get_folder(_settings._matcap_file).c_str(), ".png;.jpg;.jpeg;.bmp;.tga;.ppm", "Open MatCap", ImVec2(-1, -1), ImVec2(50, 50));
   _openMatCapFileDialog = false;
   if (strlen(openMatCapChosenPath) > 0)
-    {    
+    {
     make_matcap_from_file(_matcap, openMatCapChosenPath);
     _settings._matcap_type = _matcap.type;
     _settings._matcap_file = std::string(openMatCapChosenPath);
     _refresh = true;
+    }
+
+  static ImGuiFs::Dialog save_file_dlg(false, false, false);
+  const char* saveFileChosenPath = save_file_dlg.saveFileDialog(_saveFileDialog, _settings._current_folder.c_str(), nullptr, ".ply;.stl;.obj;.trc;.xyz;.pts", "Save file as", ImVec2(-1, -1), ImVec2(50, 50));
+  _saveFileDialog = false;
+  if (strlen(saveFileChosenPath) > 0)
+    {
+    save_file(saveFileChosenPath);
     }
 
   ImGui::Render();
@@ -970,6 +1010,7 @@ void view::loop()
       poll_for_events();
       imgui_ui();
       do_canvas_mouse();
+      process_keys();
       }
 
 

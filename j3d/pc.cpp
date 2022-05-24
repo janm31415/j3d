@@ -143,6 +143,12 @@ bool write_to_file(const pc& p, const std::string& filename)
     {
     return write_xyz(filename.c_str(), p.vertices);
     }
+  else if (ext == "trc")
+    {
+    std::vector<jtk::vec3<uint32_t>> triangles;
+    std::vector<jtk::vec3<jtk::vec2<float>>> uv;
+    return write_trc(filename.c_str(), p.vertices, p.normals, p.vertex_colors, triangles, uv);
+    }
   return false;
   }
 

@@ -10,6 +10,7 @@
 #include "scene.h"
 #include "mouse.h"
 #include "settings.h"
+#include "keyboard.h"
 
 #include <jtk/qbvh.h>
 
@@ -27,7 +28,17 @@ class view
 
     bool file_has_known_extension(const char* filename);
 
+    bool file_has_known_mesh_extension(const char* filename);
+
+    bool file_has_known_pc_extension(const char* filename);
+
     int64_t load_file(const char* filename);
+
+    void save_file(const char* filename);
+
+    void save_mesh_to_file(int64_t id, const char* filename);
+
+    void save_pc_to_file(int64_t id, const char* filename);
 
     int64_t load_mesh_from_file(const char* filename);    
 
@@ -68,6 +79,8 @@ class view
 
     void do_canvas_mouse();
 
+    void process_keys();
+
     void delete_window();
 
     void render_mouse();
@@ -102,9 +115,11 @@ class view
 
     jtk::image<pixel> _pixels;
     matcap _matcap;
+    keyboard_handler _key;
 
     std::mutex _mut;
 
     bool _openFileDialog = false;
     bool _openMatCapFileDialog = false;
+    bool _saveFileDialog = false;
   };

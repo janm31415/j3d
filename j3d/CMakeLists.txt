@@ -50,6 +50,7 @@ canvas.h
 camera.h
 db.h
 io.h
+keyboard.h
 matcap.h
 mesh.h
 mouse.h
