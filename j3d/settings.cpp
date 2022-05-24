@@ -28,6 +28,9 @@ settings read_settings(const char* filename)
   f["textured"] >> s._canvas_settings.textured;
   f["vertexcolors"] >> s._canvas_settings.vertexcolors;
   f["current_folder"] >> s._current_folder;
+
+  s._current_folder_files = jtk::get_files_from_directory(s._current_folder, false);
+
   return s;
   }
 
@@ -48,8 +51,12 @@ void write_settings(const settings& s, const char* filename)
 void update_current_folder(settings& s, const char* filename)
   {
   std::string path(filename);
-  s._current_folder = jtk::get_folder(path);
-  s._current_folder_files = jtk::get_files_from_directory(s._current_folder, false);
+  std::string current_folder = jtk::get_folder(path);
+  if (s._current_folder != current_folder)
+    {
+    s._current_folder = current_folder;
+    s._current_folder_files = jtk::get_files_from_directory(current_folder, false);
+    }
   s._index_in_folder = -1;
   for (int32_t i = 0; i < (int32_t)s._current_folder_files.size(); ++i)
     {

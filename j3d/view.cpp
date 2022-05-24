@@ -101,6 +101,8 @@ view::view() : _w(1600), _h(900), _window(nullptr)
     _canvas_pos_x += 4 - (_canvas_pos_x & 3);
   _canvas_pos_y = ((int32_t)_h - (int32_t)_canvas.height()) / 2;
 
+  make_matcap_red_wax(_matcap);
+
   std::string settings_path = get_settings_path();
   _settings = read_settings(settings_path.c_str());
 
@@ -203,7 +205,6 @@ int64_t view::load_mesh_from_file(const char* filename)
   db_mesh->vertex_colors.swap(m.vertex_colors);
   db_mesh->cs = m.cs;
   db_mesh->visible = m.visible;
-  _matcap.map_db_id_to_matcap_id(id, _get_semirandom_matcap_id(id));
   if (db_mesh->visible)
     add_object(id, _scene, _db);
   prepare_scene(_scene);
@@ -274,6 +275,10 @@ int64_t view::load_file(const char* filename)
           }
           id = load_pc_from_file(filename);
       }
+    }
+  if (id >= 0)
+    {
+    ::update_current_folder(_settings, filename);
     }
   return id;
   }
@@ -408,11 +413,6 @@ void view::unzoom()
   _refresh = true;
   }
 
-uint32_t view::_get_semirandom_matcap_id(uint32_t object_id) const
-  {
-  return _matcap.get_semirandom_matcap_id_for_given_db_id(object_id);
-  }
-
 void view::poll_for_events()
   {
   _m.right_button_down = false;
@@ -523,6 +523,30 @@ void view::poll_for_events()
         case SDLK_4:
         {
         resize_canvas(1600, 900);
+        break;
+        }
+        case SDLK_F1:
+        {
+        make_matcap_red_wax(_matcap);
+        _refresh = true;
+        break;
+        }
+        case SDLK_F2:
+        {
+        make_matcap_brown(_matcap);
+        _refresh = true;
+        break;
+        }        
+        case SDLK_F3:
+        {
+        make_matcap_gray(_matcap);
+        _refresh = true;
+        break;
+        }
+        case SDLK_F4:
+        {
+        make_matcap_sketch(_matcap);
+        _refresh = true;
         break;
         }
         case SDLK_s:
@@ -794,12 +818,13 @@ void view::imgui_ui()
     ImGui::End();
     }
 
-  static ImGuiFs::Dialog open_file_dlg(false, true, false);
-  const char* openFileChosenPath = open_file_dlg.chooseFileDialog(openFileDialog, "", ".stl;.ply;.obj", "Open file", ImVec2(-1, -1), ImVec2(50, 50));
+  static ImGuiFs::Dialog open_file_dlg(false, true, false);  
+  const char* openFileChosenPath = open_file_dlg.chooseFileDialog(openFileDialog, _settings._current_folder.c_str(), ".stl;.ply;.obj", "Open file", ImVec2(-1, -1), ImVec2(50, 50));
   openFileDialog = false;
   if (strlen(openFileChosenPath) > 0)
     {
-    load_mesh_from_file(open_file_dlg.getChosenPath());
+    clear_scene();
+    load_file(open_file_dlg.getChosenPath());
     }
 
   ImGui::Render();

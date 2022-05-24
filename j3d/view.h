@@ -56,9 +56,7 @@ class view
 
   private:
 
-    void imgui_ui();
-
-    uint32_t _get_semirandom_matcap_id(uint32_t object_id) const;
+    void imgui_ui();    
 
     void poll_for_events();
 
@@ -103,7 +101,7 @@ class view
     int32_t _canvas_pos_x, _canvas_pos_y;
 
     jtk::image<pixel> _pixels;
-    matcapmap _matcap;
+    matcap _matcap;
 
     std::mutex _mut;
   };

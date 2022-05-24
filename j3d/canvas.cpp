@@ -382,7 +382,7 @@ namespace
 
   }
 
-void canvas::canvas_to_image(const matcapmap& _matcap)
+void canvas::canvas_to_image(const matcap& _matcap)
   {
   canvas_to_image(_canvas, _matcap);
   }
@@ -431,13 +431,13 @@ uint32_t canvas::_get_color(const pixel* p, const matcap& _matcap, float u, floa
   return clr;
   }
 
-uint32_t canvas::_get_color(const pixel* p, const matcapmap& _matcap) const
+uint32_t canvas::_get_color(const pixel* p, const matcap& _matcap) const
   {
-  return _get_color(p, _matcap.get_matcap(p->db_id), p->u, p->v);
+  return _get_color(p, _matcap, p->u, p->v);
   }
 
 
-void canvas::_render_wireframe(const jtk::image<pixel>& canvas, const matcapmap& _matcap)
+void canvas::_render_wireframe(const jtk::image<pixel>& canvas, const matcap& _matcap)
   {
   const uint32_t w = im.width();
   const uint32_t h = im.height();
@@ -486,7 +486,7 @@ void canvas::_render_wireframe(const jtk::image<pixel>& canvas, const matcapmap&
     }
   }
 
-void canvas::_canvas_to_one_bit_image(const jtk::image<pixel>& _combined_canvas, const matcapmap& _matcap)
+void canvas::_canvas_to_one_bit_image(const jtk::image<pixel>& _combined_canvas, const matcap& _matcap)
   {
   const uint32_t black = 0xff000000;
   const uint32_t white = 0xffffffff;
@@ -532,9 +532,9 @@ void canvas::_canvas_to_one_bit_image(const jtk::image<pixel>& _combined_canvas,
 
           angle = u1 * u2 + v1 * v2 + w1 * w2;
           }
-        int U = get_U(p_combined_canvas->u, _matcap.get_matcap(p_combined_canvas->db_id));
-        int V = get_V(p_combined_canvas->v, _matcap.get_matcap(p_combined_canvas->db_id));
-        auto clr = get_color(_matcap.get_matcap(p_combined_canvas->db_id), U, V, p_combined_canvas->mark);
+        int U = get_U(p_combined_canvas->u, _matcap);
+        int V = get_V(p_combined_canvas->v, _matcap);
+        auto clr = get_color(_matcap, U, V, p_combined_canvas->mark);
         int res = (((clr & 0xff0000) >> 16) + ((clr & 0xff00) >> 8) + (clr & 0xff)) >> 7;
         ++res;
         bool clr_black = (((x % res == 0) && (y % res == 0)));
@@ -554,10 +554,10 @@ void canvas::_canvas_to_one_bit_image(const jtk::image<pixel>& _combined_canvas,
       }
     if (p_combined_canvas->object_id != (uint32_t)(-1))
       {
-      int U = get_U(p_combined_canvas->u, _matcap.get_matcap(p_combined_canvas->db_id));
-      int V = get_V(p_combined_canvas->v, _matcap.get_matcap(p_combined_canvas->db_id));
+      int U = get_U(p_combined_canvas->u, _matcap);
+      int V = get_V(p_combined_canvas->v, _matcap);
 
-      auto clr = get_color(_matcap.get_matcap(p_combined_canvas->db_id), U, V, p_combined_canvas->mark);
+      auto clr = get_color(_matcap, U, V, p_combined_canvas->mark);
       int res = (((clr & 0xff0000) >> 16) + ((clr & 0xff00) >> 8) + (clr & 0xff)) >> 7;
       ++res;
       if ((((w - 1) % res == 0) && (y % res == 0)))
@@ -570,7 +570,7 @@ void canvas::_canvas_to_one_bit_image(const jtk::image<pixel>& _combined_canvas,
   }
 
 
-void canvas::canvas_to_image(const jtk::image<pixel>& _combined_canvas, const matcapmap& _matcap)
+void canvas::canvas_to_image(const jtk::image<pixel>& _combined_canvas, const matcap& _matcap)
   {
   if (_settings.one_bit)
     {
@@ -606,7 +606,7 @@ void canvas::canvas_to_image(const jtk::image<pixel>& _combined_canvas, const ma
 
             float angle = compute_convex_cos_angle((float)x, (float)y, u1, v1, p_combined_canvas->depth, (float)x + 1.f, (float)y, u2, v2, p_right_combined_canvas->depth);
 
-            auto clr = get_angle_color(angle, _matcap.get_matcap(p_combined_canvas->db_id), u1, v1, p_combined_canvas->mark);
+            auto clr = get_angle_color(angle, _matcap, u1, v1, p_combined_canvas->mark);
             *p_im_line = clr;
             }
           else if ((p_up_combined_canvas->object_id != (uint32_t)(-1)) && ((fabs(p_combined_canvas->u - p_up_combined_canvas->u) > threshold) || (fabs(p_combined_canvas->v - p_up_combined_canvas->v) > threshold)))
@@ -617,7 +617,7 @@ void canvas::canvas_to_image(const jtk::image<pixel>& _combined_canvas, const ma
             float v2 = p_up_combined_canvas->v;
 
             float angle = compute_convex_cos_angle((float)x, (float)y, u1, v1, p_combined_canvas->depth, (float)x, (float)y - 1.f, u2, v2, p_up_combined_canvas->depth);
-            auto clr = get_angle_color(angle, _matcap.get_matcap(p_combined_canvas->db_id), u1, v1, p_combined_canvas->mark);
+            auto clr = get_angle_color(angle, _matcap, u1, v1, p_combined_canvas->mark);
             *p_im_line = clr;
             }
           else

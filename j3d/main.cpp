@@ -48,10 +48,10 @@ int main(int argc, char** argv)
   for (int i = 1; i < argc; ++i)
     {
     int64_t id = v.load_file(argv[i]);
-    if (id >= 0)
-      {
-      v.update_current_folder(std::string(argv[i]));
-      }
+    //if (id >= 0)
+    //  {
+    //  v.update_current_folder(std::string(argv[i]));
+    //  }
     }
   v.prepare_window();
   v.loop();

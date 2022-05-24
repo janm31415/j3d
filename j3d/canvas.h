@@ -58,8 +58,8 @@ class canvas
       _settings = s;
       }
 
-    void canvas_to_image(const jtk::image<pixel>& canvas, const matcapmap& _matcap);
-    void canvas_to_image(const matcapmap& _matcap);
+    void canvas_to_image(const jtk::image<pixel>& canvas, const matcap& _matcap);
+    void canvas_to_image(const matcap& _matcap);
 
     const jtk::float4x4& get_projection_matrix() const { return projection_matrix; }
     const jtk::float4x4& get_inverse_projection_matrix() const { return projection_matrix_inv; }
@@ -75,11 +75,11 @@ class canvas
   private:
     float compute_convex_cos_angle(float x1, float y1, float u1, float v1, float depth1, float x2, float y2, float u2, float v2, float depth2);
     
-    void _render_wireframe(const jtk::image<pixel>& canvas, const matcapmap& _matcap);
+    void _render_wireframe(const jtk::image<pixel>& canvas, const matcap& _matcap);
 
-    void _canvas_to_one_bit_image(const jtk::image<pixel>& _combined_canvas, const matcapmap& _matcap);
+    void _canvas_to_one_bit_image(const jtk::image<pixel>& _combined_canvas, const matcap& _matcap);
 
-    uint32_t _get_color(const pixel* p, const matcapmap& _matcap) const;
+    uint32_t _get_color(const pixel* p, const matcap& _matcap) const;
 
     uint32_t _get_color(const pixel* p, const matcap& _matcap, float u, float v) const;
 
