@@ -14,7 +14,9 @@
 
 #include <SDL_syswm.h>
 
-#include <jtk/geometry.h>
+#include "jtk/geometry.h"
+
+#include "stb/stb_image_write.h"
 
 #include <sstream>
 
@@ -331,6 +333,38 @@ void view::save_pc_to_file(int64_t id, const char* filename)
     }
   }
 
+void view::screenshot(const char* filename)
+  {
+  std::string fn(filename);
+  std::string ext = jtk::get_extension(fn);
+  if (ext.empty())
+    return;
+  std::transform(ext.begin(), ext.end(), ext.begin(), [](char ch) {return (char)::tolower(ch); });
+
+  const jtk::image<uint32_t>& im = _canvas.get_image();
+  const uint32_t w = im.width();
+  const uint32_t h = im.height();
+  uint32_t* raw = new uint32_t[w*h];
+  uint32_t* p_raw = raw;
+  for (uint32_t y = 0; y < h; ++y)
+    {
+    const uint32_t* p_im = im.data() + y*im.stride();
+    for (uint32_t x = 0; x < w; ++x)
+      *p_raw++ = *p_im++;
+    }
+
+  if (ext == "png")
+    stbi_write_png(filename, w, h, 4, (void*)raw, w * 4);
+  else if (ext == "jpg" || ext == "jpeg")
+    stbi_write_jpg(filename, w, h, 4, raw, 80);
+  else if (ext == "bmp")
+    stbi_write_bmp(filename, w, h, 4, raw);
+  else if (ext == "tga")
+    stbi_write_tga(filename, w, h, 4, raw);
+
+  delete [] raw;
+  }
+
 void view::save_file(const char* filename)
   {
   if (!_db.get_meshes().empty())
@@ -499,13 +533,17 @@ void view::process_keys()
     }
   else if (_key.is_pressed(SDLK_4))
     {
-    resize_canvas(1280, 800);
+    resize_canvas(1024, 1024);
     }
   else if (_key.is_pressed(SDLK_5))
     {
-    resize_canvas(1440, 900);
+    resize_canvas(1280, 800);
     }
   else if (_key.is_pressed(SDLK_6))
+    {
+    resize_canvas(1440, 900);
+    }
+  else if (_key.is_pressed(SDLK_7))
     {
     resize_canvas(1600, 900);
     }
@@ -553,8 +591,15 @@ void view::process_keys()
     }
   else if (_key.is_pressed(SDLK_e))
     {
-    _settings._canvas_settings.edges = !_settings._canvas_settings.edges;
-    _refresh = true;
+    if (_m.ctrl_pressed)
+      {
+      _screenshotDialog = true;
+      }
+    else
+      {
+      _settings._canvas_settings.edges = !_settings._canvas_settings.edges;
+      _refresh = true;
+      }
     }
   else if (_key.is_pressed(SDLK_o))
     {
@@ -758,10 +803,10 @@ void view::resize_canvas(uint32_t canvas_w, uint32_t canvas_h)
   _settings._canvas_w = canvas_w;
   _settings._canvas_h = canvas_h;
   _refresh = true;
-  if (canvas_w > _w)
-    canvas_w = _w;
-  if (canvas_h > _h)
-    canvas_h = _h;
+  //if (canvas_w > _w)
+  //  canvas_w = _w;
+  //if (canvas_h > _h)
+  //  canvas_h = _h;
   _canvas.resize(canvas_w, canvas_h);
   _canvas_pos_x = ((int32_t)_w - (int32_t)_canvas.width()) / 2;
   if (_canvas_pos_x & 3)
@@ -852,9 +897,16 @@ void view::imgui_ui()
   bool canvas_size_512x512 = (_settings._canvas_w == 512 && _settings._canvas_h == 512);
   bool canvas_size_800x600 = (_settings._canvas_w == 800 && _settings._canvas_h == 600);
   bool canvas_size_1024x768 = (_settings._canvas_w == 1024 && _settings._canvas_h == 768);
+  bool canvas_size_1024x1024 = (_settings._canvas_w == 1024 && _settings._canvas_h == 1024);
   bool canvas_size_1280x800 = (_settings._canvas_w == 1280 && _settings._canvas_h == 800);
   bool canvas_size_1440x900 = (_settings._canvas_w == 1440 && _settings._canvas_h == 900);
   bool canvas_size_1600x900 = (_settings._canvas_w == 1600 && _settings._canvas_h == 900);
+
+  bool redwax = _settings._matcap_type == matcap_type::MATCAP_TYPE_INTERNAL_REDWAX;
+  bool gray = _settings._matcap_type == matcap_type::MATCAP_TYPE_INTERNAL_GRAY;
+  bool brown = _settings._matcap_type == matcap_type::MATCAP_TYPE_INTERNAL_BROWN;
+  bool sketch = _settings._matcap_type == matcap_type::MATCAP_TYPE_INTERNAL_SKETCH;
+  bool matcap_external = _settings._matcap_type == matcap_type::MATCAP_TYPE_EXTERNAL_FILE;
 
   ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
   ImGui::SetNextWindowSize(ImVec2((float)_w, 10), ImGuiCond_Always);
@@ -885,6 +937,11 @@ void view::imgui_ui()
           _saveFileDialog = true;
           }
         ImGui::Separator();
+        if (ImGui::MenuItem("Screenshot", "ctrl+e"))
+          {
+          _screenshotDialog = true;
+          }
+        ImGui::Separator();
         if (ImGui::MenuItem("Quit", "Esc"))
           {
           _quit = true;
@@ -899,11 +956,13 @@ void view::imgui_ui()
           resize_canvas(800, 600);
         if (ImGui::MenuItem("1024x768", "3", &canvas_size_1024x768))
           resize_canvas(1024, 768);
-        if (ImGui::MenuItem("1280x800", "4", &canvas_size_1280x800))
+        if (ImGui::MenuItem("1024x1024", "4", &canvas_size_1024x1024))
+          resize_canvas(1024, 1024);
+        if (ImGui::MenuItem("1280x800", "5", &canvas_size_1280x800))
           resize_canvas(1280, 800);
-        if (ImGui::MenuItem("1440x900", "5", &canvas_size_1440x900))
+        if (ImGui::MenuItem("1440x900", "6", &canvas_size_1440x900))
           resize_canvas(1440, 900);
-        if (ImGui::MenuItem("1600x900", "6", &canvas_size_1600x900))
+        if (ImGui::MenuItem("1600x900", "7", &canvas_size_1600x900))
           resize_canvas(1600, 900);
         ImGui::Separator();
         if (ImGui::MenuItem("One bit", "b", &_settings._canvas_settings.one_bit))
@@ -929,31 +988,31 @@ void view::imgui_ui()
         }
       if (ImGui::BeginMenu("MatCap"))
         {
-        if (ImGui::MenuItem("Red wax", "F1"))
+        if (ImGui::MenuItem("Red wax", "F1", &redwax))
           {
           make_matcap(_matcap, matcap_type::MATCAP_TYPE_INTERNAL_REDWAX, nullptr);
           _settings._matcap_type = _matcap.type;
           _refresh = true;
           }
-        if (ImGui::MenuItem("Brown", "F2"))
+        if (ImGui::MenuItem("Brown", "F2", &brown))
           {
           make_matcap(_matcap, matcap_type::MATCAP_TYPE_INTERNAL_BROWN, nullptr);
           _settings._matcap_type = _matcap.type;
           _refresh = true;
           }
-        if (ImGui::MenuItem("Gray", "F3"))
+        if (ImGui::MenuItem("Gray", "F3", &gray))
           {
           make_matcap(_matcap, matcap_type::MATCAP_TYPE_INTERNAL_GRAY, nullptr);
           _settings._matcap_type = _matcap.type;
           _refresh = true;
           }
-        if (ImGui::MenuItem("Sketch", "F4"))
+        if (ImGui::MenuItem("Sketch", "F4", &sketch))
           {
           make_matcap(_matcap, matcap_type::MATCAP_TYPE_INTERNAL_SKETCH, nullptr);
           _settings._matcap_type = _matcap.type;
           _refresh = true;
           }
-        if (ImGui::MenuItem("From file", "ctrl+m"))
+        if (ImGui::MenuItem("From file", "ctrl+m", &matcap_external))
           {
           _openMatCapFileDialog = true;
           }
@@ -990,6 +1049,14 @@ void view::imgui_ui()
   if (strlen(saveFileChosenPath) > 0)
     {
     save_file(saveFileChosenPath);
+    }
+
+  static ImGuiFs::Dialog screenshot_file_dlg(false, false, false);
+  const char* screenshotFileChosenPath = screenshot_file_dlg.saveFileDialog(_screenshotDialog, _settings._current_folder.c_str(), nullptr, ".png;.bmp;.jpg;.tga", "Screenshot file", ImVec2(-1, -1), ImVec2(50, 50));
+  _screenshotDialog = false;
+  if (strlen(screenshotFileChosenPath) > 0)
+    {
+    screenshot(screenshotFileChosenPath);
     }
 
   ImGui::Render();

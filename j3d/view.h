@@ -34,6 +34,8 @@ class view
 
     int64_t load_file(const char* filename);
 
+    void screenshot(const char* filename);
+
     void save_file(const char* filename);
 
     void save_mesh_to_file(int64_t id, const char* filename);
@@ -122,4 +124,5 @@ class view
     bool _openFileDialog = false;
     bool _openMatCapFileDialog = false;
     bool _saveFileDialog = false;
+    bool _screenshotDialog = false;
   };
