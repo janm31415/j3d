@@ -54,54 +54,83 @@ void compute_bb(vec3<float>& min, vec3<float>& max, uint32_t nr_of_vertices, con
     }
   }
 
+std::vector<std::pair<std::string, mesh_filetype>> get_valid_mesh_extensions()
+  {
+  std::vector<std::pair<std::string, mesh_filetype>> extensions;
+
+  extensions.emplace_back(std::string("stl"), mesh_filetype::MESH_FILETYPE_STL);
+  extensions.emplace_back(std::string("ply"), mesh_filetype::MESH_FILETYPE_PLY);
+  extensions.emplace_back(std::string("off"), mesh_filetype::MESH_FILETYPE_OFF);
+  extensions.emplace_back(std::string("obj"), mesh_filetype::MESH_FILETYPE_OBJ);
+
+  return extensions;
+  }
+
 bool read_from_file(mesh& m, const std::string& filename)
   {
   std::string ext = jtk::get_extension(filename);
   if (ext.empty())
     return false;
   std::transform(ext.begin(), ext.end(), ext.begin(), [](char ch) {return (char)::tolower(ch); });
-  if (ext == "stl")
+
+  static std::vector<std::pair<std::string, mesh_filetype>> valid_extensions = get_valid_mesh_extensions();
+
+  for (const auto& valid_ext : valid_extensions)
     {
-    if (!read_stl(m.vertices, m.triangles, filename.c_str()))
+    if (valid_ext.first == ext)
       {
-      if (!read_stl_ascii(m.vertices, m.triangles, filename.c_str()))
-        return false;
-      }
+      switch (valid_ext.second)
+        {
+        case mesh_filetype::MESH_FILETYPE_STL:
+        {
+          if (!read_stl(m.vertices, m.triangles, filename.c_str()))
+            {
+            if (!read_stl_ascii(m.vertices, m.triangles, filename.c_str()))
+              return false;
+            }
+          break;
+        }
+        case mesh_filetype::MESH_FILETYPE_PLY:
+        {
+        std::vector<jtk::vec3<float>> vertex_normals;
+        std::vector<uint32_t> vertex_colors;
+        if (!read_ply(filename.c_str(), m.vertices, vertex_normals, vertex_colors, m.triangles, m.uv_coordinates))
+          return false;
+        if (!vertex_colors.empty())
+          {
+          m.vertex_colors = convert_vertex_colors(vertex_colors);
+          }
+        break;
+        }
+        case mesh_filetype::MESH_FILETYPE_OFF:
+        {
+        if (!read_off(m.vertices, m.triangles, filename.c_str()))
+          return false;
+        break;
+        }
+        case mesh_filetype::MESH_FILETYPE_OBJ:
+        {
+        std::vector<jtk::vec3<float>> vertex_normals;
+        std::vector<uint32_t> vertex_colors;
+        if (!read_obj(filename.c_str(), m.vertices, vertex_normals, vertex_colors, m.triangles, m.uv_coordinates, m.texture))
+          return false;
+        if (!vertex_colors.empty())
+          {
+          m.vertex_colors = convert_vertex_colors(vertex_colors);
+          }
+        break;
+        }
+        }
+
+      if (!m.uv_coordinates.empty() && (m.texture.width() == 0 || m.texture.height() == 0))
+        m.texture = make_dummy_texture(512, 512);
+      m.cs = get_identity();
+      m.visible = true;
+      return true;
+
+      } // if (valid_ext.first == ext)
     }
-  else if (ext == "ply")
-    {
-    std::vector<jtk::vec3<float>> vertex_normals;
-    std::vector<uint32_t> vertex_colors;
-    if (!read_ply(filename.c_str(), m.vertices, vertex_normals, vertex_colors, m.triangles, m.uv_coordinates))
-      return false;
-    if (!vertex_colors.empty())
-      {
-      m.vertex_colors = convert_vertex_colors(vertex_colors);
-      }
-    }
-  else if (ext == "off")
-    {
-    if (!read_off(m.vertices, m.triangles, filename.c_str()))
-      return false;
-    }
-  else if (ext == "obj")
-    {
-    std::vector<jtk::vec3<float>> vertex_normals;
-    std::vector<uint32_t> vertex_colors;
-    if (!read_obj(filename.c_str(), m.vertices, vertex_normals, vertex_colors, m.triangles, m.uv_coordinates, m.texture))
-      return false;
-    if (!vertex_colors.empty())
-      {
-      m.vertex_colors = convert_vertex_colors(vertex_colors);
-      }
-    }  
-  else
-    return false;
-  if (!m.uv_coordinates.empty() && (m.texture.width() == 0 || m.texture.height() == 0))
-    m.texture = make_dummy_texture(512, 512);
-  m.cs = get_identity();
-  m.visible = true;
-  return true;
+  return false;
   }
 
 bool vertices_to_csv(const mesh& m, const std::string& filename)

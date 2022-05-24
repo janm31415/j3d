@@ -15,49 +15,80 @@
 
 using namespace jtk;
 
+std::vector<std::pair<std::string, pc_filetype>> get_valid_pc_extensions()
+  {
+  std::vector<std::pair<std::string, pc_filetype>> extensions;
+
+  extensions.emplace_back(std::string("ply"), pc_filetype::PC_FILETYPE_PLY);
+  extensions.emplace_back(std::string("obj"), pc_filetype::PC_FILETYPE_OBJ);
+  extensions.emplace_back(std::string("pts"), pc_filetype::PC_FILETYPE_PTS);
+  extensions.emplace_back(std::string("xyz"), pc_filetype::PC_FILETYPE_XYZ);
+
+  return extensions;
+  }
+
 bool read_from_file(pc& point_cloud, const std::string& filename)
   {
   std::string ext = jtk::get_extension(filename);
   if (ext.empty())
     return false;
   std::transform(ext.begin(), ext.end(), ext.begin(), [](char ch) {return (char)::tolower(ch); });
-  if (ext == "ply")
+
+  static std::vector<std::pair<std::string, pc_filetype>> valid_extensions = get_valid_pc_extensions();
+
+  for (const auto& valid_ext : valid_extensions)
     {
-    std::vector<jtk::vec3<uint32_t>> triangles;
-    std::vector<jtk::vec3<jtk::vec2<float>>> uv;
-    if (!read_ply(filename.c_str(), point_cloud.vertices, point_cloud.normals, point_cloud.vertex_colors, triangles, uv))
-      return false;
-    if (point_cloud.vertices.empty())
-      return false;
-    }  
-  else if (ext == "obj")
-    {
-    std::vector<jtk::vec3<uint32_t>> triangles;
-    std::vector<jtk::vec3<jtk::vec2<float>>> uv;
-    jtk::image<uint32_t> texture;
-    if (!read_obj(filename.c_str(), point_cloud.vertices, point_cloud.normals, point_cloud.vertex_colors, triangles, uv, texture))
-      return false;
-    if (point_cloud.vertices.empty())
-      return false;
+    if (valid_ext.first == ext)
+      {
+      switch (valid_ext.second)
+        {      
+        case pc_filetype::PC_FILETYPE_PLY:
+        {
+        std::vector<jtk::vec3<uint32_t>> triangles;
+        std::vector<jtk::vec3<jtk::vec2<float>>> uv;
+        if (!read_ply(filename.c_str(), point_cloud.vertices, point_cloud.normals, point_cloud.vertex_colors, triangles, uv))
+          return false;
+        if (point_cloud.vertices.empty())
+          return false;
+        break;
+        }
+        case pc_filetype::PC_FILETYPE_OBJ:
+        {
+        std::vector<jtk::vec3<uint32_t>> triangles;
+        std::vector<jtk::vec3<jtk::vec2<float>>> uv;
+        jtk::image<uint32_t> texture;
+        if (!read_obj(filename.c_str(), point_cloud.vertices, point_cloud.normals, point_cloud.vertex_colors, triangles, uv, texture))
+          return false;
+        if (point_cloud.vertices.empty())
+          return false;
+        break;
+        }
+        case pc_filetype::PC_FILETYPE_PTS:
+        {
+        std::vector<int> intensity;
+        if (!read_pts(filename.c_str(), point_cloud.vertices, intensity, point_cloud.vertex_colors))
+          return false;
+        if (point_cloud.vertices.empty())
+          return false;
+        break;
+        }
+        case pc_filetype::PC_FILETYPE_XYZ:
+        {
+        if (!read_xyz(filename.c_str(), point_cloud.vertices))
+          return false;
+        if (point_cloud.vertices.empty())
+          return false;
+        break;
+        }
+        }
+
+      point_cloud.cs = get_identity();
+      point_cloud.visible = true;
+      return true;
+
+      } // if (valid_ext.first == ext)
     }
-  else if (ext == "pts")
-    {
-    std::vector<int> intensity;
-    if (!read_pts(filename.c_str(), point_cloud.vertices, intensity, point_cloud.vertex_colors))
-      return false;
-    if (point_cloud.vertices.empty())
-      return false;
-    }
-  else if (ext == "xyz")
-    {
-    if (!read_xyz(filename.c_str(), point_cloud.vertices))
-      return false;
-    if (point_cloud.vertices.empty())
-      return false;
-    }
-  point_cloud.cs = get_identity();
-  point_cloud.visible = true;
-  return true;
+  return false;
   }
 
 bool vertices_to_csv(const pc& m, const std::string& filename)

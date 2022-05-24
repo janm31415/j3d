@@ -8,6 +8,8 @@
 #include "imgui_impl_opengl2.h"
 #include "imguifilesystem.h"
 
+#include "jtk/file_utils.h"
+
 #include <iostream>
 
 #include <SDL_syswm.h>
@@ -99,13 +101,8 @@ view::view() : _w(1600), _h(900), _window(nullptr)
     _canvas_pos_x += 4 - (_canvas_pos_x & 3);
   _canvas_pos_y = ((int32_t)_h - (int32_t)_canvas.height()) / 2;
 
-  _settings.one_bit = false;
-  _settings.shadow = false;
-  _settings.edges = true;
-  _settings.wireframe = false;
-  _settings.shading = true;
-  _settings.textured = true;
-  _settings.vertexcolors = true;
+  std::string settings_path = get_settings_path();
+  _settings = read_settings(settings_path.c_str());
 
   _suspend = false;
   _resume = false;
@@ -113,6 +110,8 @@ view::view() : _w(1600), _h(900), _window(nullptr)
 
 view::~view()
   {
+  std::string settings_path = get_settings_path();
+  write_settings(_settings, settings_path.c_str());
   delete_window();
   }
 
@@ -135,18 +134,19 @@ void view::prepare_window()
   if (_window)
     return;
   _window = SDL_CreateWindow("j3d", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, _w, _h, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
-      
+
   if (_window == NULL)
-  {
-      std::cout << SDL_GetError() << "\n";
-      return;
-  }
+    {
+    std::cout << SDL_GetError() << "\n";
+    return;
+    }
   SDL_GLContext gl_context = SDL_GL_CreateContext(_window);
   SDL_GL_SetSwapInterval(1); // Enable vsync
 
   // Setup Dear ImGui context
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
+  ImGui::GetIO().IniFilename = nullptr;
 
   // Setup Platform/Renderer bindings
   ImGui_ImplSDL2_InitForOpenGL(_window, gl_context);
@@ -178,6 +178,11 @@ void view::prepare_window()
 
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _gl_texture_w, _gl_texture_h, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
   gl_check_error("glTexImage2D in view.cpp");
+  }
+
+void view::update_current_folder(const std::string& folder)
+  {
+  ::update_current_folder(_settings, folder.c_str());
   }
 
 int64_t view::load_mesh_from_file(const char* filename)
@@ -231,10 +236,66 @@ int64_t view::load_pc_from_file(const char* filename)
   return (int64_t)id;
   }
 
+bool view::file_has_known_extension(const char* filename)
+  {
+  std::string ext = jtk::get_extension(std::string(filename));
+  if (ext.empty())
+    return false;
+  std::transform(ext.begin(), ext.end(), ext.begin(), [](char ch) {return (char)::tolower(ch); });
+
+  static std::vector<std::pair<std::string, mesh_filetype>> valid_mesh_extensions = get_valid_mesh_extensions();
+  for (const auto& valid_ext : valid_mesh_extensions)
+    {
+    if (valid_ext.first == ext)
+      return true;
+    }
+  static std::vector<std::pair<std::string, pc_filetype>> valid_pc_extensions = get_valid_pc_extensions();
+  for (const auto& valid_ext : valid_pc_extensions)
+    {
+    if (valid_ext.first == ext)
+      return true;
+    }
+  return false;
+  }
+
+int64_t view::load_file(const char* filename)
+  {
+  int64_t id = load_mesh_from_file(filename);
+  if (id < 0)
+    id = load_pc_from_file(filename);
+  else
+    {
+    if (get_triangles(_db, id)->empty()) // mesh without triangles? -> point cloud
+      {
+          {
+          std::scoped_lock lock(_mut);
+          remove_object(id, _scene);
+          _db.delete_object_hard(id);
+          }
+          id = load_pc_from_file(filename);
+      }
+    }
+  return id;
+  }
+
+void view::clear_scene()
+  {
+  std::scoped_lock lock(_mut);
+  for (const auto& meshes : _db.get_meshes())
+    {
+    remove_object(meshes.first, _scene);
+    }
+  for (const auto& pcs : _db.get_pcs())
+    {
+    remove_object(pcs.first, _scene);
+    }
+  _db.clear();
+  }
+
 void view::render_scene()
   {
   // assumes a lock has been set already
-  _canvas.update_settings(_settings);
+  _canvas.update_settings(_settings._canvas_settings);
   _canvas.render_scene(&_scene);
   _pixels = _canvas.get_pixels();
   _canvas.canvas_to_image(_pixels, _matcap);
@@ -267,7 +328,7 @@ jtk::vec3<float> view::get_world_position(int x, int y)
     const float4 V0(m->vertices[v0][0], m->vertices[v0][1], m->vertices[v0][2], 1.f);
     const float4 V1(m->vertices[v1][0], m->vertices[v1][1], m->vertices[v1][2], 1.f);
     const float4 V2(m->vertices[v2][0], m->vertices[v2][1], m->vertices[v2][2], 1.f);
-    const float4 pos = V0 * (1.f - p.barycentric_u - p.barycentric_v) + p.barycentric_u*V1 + p.barycentric_v*V2;
+    const float4 pos = V0 * (1.f - p.barycentric_u - p.barycentric_v) + p.barycentric_u * V1 + p.barycentric_v * V2;
     auto world_pos = matrix_vector_multiply(m->cs, pos);
     return jtk::vec3<float>(world_pos[0], world_pos[1], world_pos[2]);
     }
@@ -277,7 +338,7 @@ jtk::vec3<float> view::get_world_position(int x, int y)
     const float4 pos(ptcl->vertices[p.object_id][0], ptcl->vertices[p.object_id][1], ptcl->vertices[p.object_id][2], 1.f);
     auto world_pos = matrix_vector_multiply(m->cs, pos);
     return jtk::vec3<float>(world_pos[0], world_pos[1], world_pos[2]);
-    }  
+    }
   return invalid_vertex;
   }
 
@@ -289,7 +350,7 @@ uint32_t view::get_index(int x, int y)
   const auto& p = _pixels(x, y);
   if (p.db_id == 0)
     return (uint32_t)(-1);
-  uint32_t closest_v = get_closest_vertex(p, get_vertices(_db, p.db_id), get_triangles(_db, p.db_id));    
+  uint32_t closest_v = get_closest_vertex(p, get_vertices(_db, p.db_id), get_triangles(_db, p.db_id));
   return closest_v;
   }
 
@@ -302,6 +363,42 @@ uint32_t view::get_id(int x, int y)
   if (p.db_id == 0)
     return (uint32_t)0;
   return p.db_id;
+  }
+
+void view::_load_next_file_in_folder(int32_t step_size)
+  {
+  if (_settings._current_folder_files.empty())
+    return;
+  while (step_size < 0)
+    step_size += _settings._current_folder_files.size();
+  int32_t current_index = _settings._index_in_folder;
+  _settings._index_in_folder = (_settings._index_in_folder + step_size) % _settings._current_folder_files.size();
+  while (current_index != _settings._index_in_folder)
+    {
+    const std::string& file_to_check = _settings._current_folder_files[_settings._index_in_folder];
+    if (file_has_known_extension(file_to_check.c_str()))
+      {
+      clear_scene();
+      int32_t id = load_file(file_to_check.c_str());
+      _refresh = true;
+      //if (id >= 0)
+      //  {
+      //  unzoom();
+      //  }
+      break;
+      }
+    _settings._index_in_folder = (_settings._index_in_folder + step_size) % _settings._current_folder_files.size();
+    }
+  }
+
+void view::load_next_file_in_folder()
+  {
+  _load_next_file_in_folder(1);
+  }
+
+void view::load_previous_file_in_folder()
+  {
+  _load_next_file_in_folder(-1);
   }
 
 void view::unzoom()
@@ -398,6 +495,16 @@ void view::poll_for_events()
         _m.ctrl_pressed = false;
         break;
         }
+        case SDLK_SPACE:
+        {
+        load_next_file_in_folder();
+        break;
+        }
+        case SDLK_BACKSPACE:
+        {
+        load_previous_file_in_folder();
+        break;
+        }
         case SDLK_1:
         {
         resize_canvas(512, 512);
@@ -420,31 +527,31 @@ void view::poll_for_events()
         }
         case SDLK_s:
         {
-        _settings.shadow = !_settings.shadow;
+        _settings._canvas_settings.shadow = !_settings._canvas_settings.shadow;
         _refresh = true;
         break;
         }
         case SDLK_t:
         {
-        _settings.textured = !_settings.textured;
+        _settings._canvas_settings.textured = !_settings._canvas_settings.textured;
         _refresh = true;
         break;
         }
         case SDLK_l:
         {
-        _settings.shading = !_settings.shading;
+        _settings._canvas_settings.shading = !_settings._canvas_settings.shading;
         _refresh = true;
         break;
         }
         case SDLK_e:
         {
-        _settings.edges = !_settings.edges;
+        _settings._canvas_settings.edges = !_settings._canvas_settings.edges;
         _refresh = true;
         break;
         }
         case SDLK_b:
         {
-        _settings.one_bit = !_settings.one_bit;
+        _settings._canvas_settings.one_bit = !_settings._canvas_settings.one_bit;
         _refresh = true;
         break;
         }
@@ -456,16 +563,17 @@ void view::poll_for_events()
         }
         case SDLK_v:
         {
-        _settings.vertexcolors = !_settings.vertexcolors;
+        _settings._canvas_settings.vertexcolors = !_settings._canvas_settings.vertexcolors;
         _refresh = true;
         break;
         }
         case SDLK_w:
         {
-        _settings.wireframe = !_settings.wireframe;
+        _settings._canvas_settings.wireframe = !_settings._canvas_settings.wireframe;
         _refresh = true;
         break;
         }
+        /*
         case SDLK_SPACE:
         {
         if (mouse_in_canvas())
@@ -486,7 +594,7 @@ void view::poll_for_events()
             }
           }
         break;
-        }
+        }*/
         }
       }
     if (event.type == SDL_WINDOWEVENT)
@@ -634,8 +742,8 @@ void view::render_mouse()
     V4 = jtk::matrix_vector_multiply(*get_cs(_db, p_actual.db_id), V4);
     V4 = jtk::matrix_vector_multiply(_scene.coordinate_system_inv, V4);
     V4 = jtk::matrix_vector_multiply(_canvas.get_projection_matrix(), V4);
-    int x = (int)(((V4[0] / V4[3] + 1.f) / 2.f)*_canvas.width() - 0.5f);
-    int y = (int)(((V4[1] / V4[3] + 1.f) / 2.f)*_canvas.height() - 0.5f);
+    int x = (int)(((V4[0] / V4[3] + 1.f) / 2.f) * _canvas.width() - 0.5f);
+    int y = (int)(((V4[1] / V4[3] + 1.f) / 2.f) * _canvas.height() - 0.5f);
     _draw_square(x + _canvas_pos_x, _screen.height() - 1 - (y + _canvas_pos_y), 3, _screen, clr);
     _draw_square(x + _canvas_pos_x, _screen.height() - 1 - (y + _canvas_pos_y), 5, _screen, 0xff000000);
     }

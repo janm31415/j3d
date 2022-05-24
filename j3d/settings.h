@@ -22,4 +22,4 @@ void write_settings(const settings& s, const char* filename);
 
 void update_current_folder(settings& s, const char* filename);
 
-
+std::string get_settings_path();

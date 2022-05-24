@@ -8,6 +8,14 @@
 #include <memory>
 #include <string>
 
+enum class pc_filetype
+  {
+  PC_FILETYPE_PLY,
+  PC_FILETYPE_OBJ,
+  PC_FILETYPE_PTS,
+  PC_FILETYPE_XYZ,
+  };
+
 struct pc
   {
   std::vector<jtk::vec3<float>> vertices;  
@@ -28,3 +36,5 @@ void info(const pc& p);
 void cs_apply(pc& p);
 
 std::vector<jtk::vec3<float>> estimate_normals(const pc& p, uint32_t k);
+
+std::vector<std::pair<std::string, pc_filetype>> get_valid_pc_extensions();

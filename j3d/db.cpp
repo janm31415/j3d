@@ -21,7 +21,7 @@ void db::swap(db& other)
   std::swap(meshes, other.meshes);
   std::swap(meshes_deleted, other.meshes_deleted);
   std::swap(pcs, other.pcs);
-  std::swap(pcs_deleted, other.pcs_deleted); 
+  std::swap(pcs_deleted, other.pcs_deleted);
   }
 
 void db::create_mesh(mesh*& new_mesh, uint32_t& id)
@@ -76,6 +76,32 @@ bool db::is_pc(uint32_t id) const
   return get_db_key(id) == PC_KEY;
   }
 
+void db::delete_object_hard(uint32_t id)
+  {
+  auto key = get_db_key(id);
+  auto vector_index = get_db_vector_index(id);
+  switch (key)
+    {
+    case MESH_KEY:
+      if (meshes[vector_index].second)
+        {
+        delete meshes_deleted[vector_index].second;
+        delete meshes[vector_index].second;
+        meshes_deleted.erase(meshes_deleted.begin() + vector_index);
+        meshes.erase(meshes.begin() + vector_index);
+        }
+      break;
+    case PC_KEY:
+      if (pcs[vector_index].second)
+        {
+        delete pcs_deleted[vector_index].second;
+        delete pcs[vector_index].second;
+        pcs_deleted.erase(pcs_deleted.begin() + vector_index);
+        pcs.erase(pcs.begin() + vector_index);
+        }
+      break;
+    }
+  }
 void db::delete_object(uint32_t id)
   {
   auto key = get_db_key(id);
@@ -87,7 +113,7 @@ void db::delete_object(uint32_t id)
         {
         meshes_deleted[vector_index].second = meshes[vector_index].second;
         meshes[vector_index].second = nullptr;
-        }          
+        }
       break;
     case PC_KEY:
       if (pcs[vector_index].second)
@@ -111,14 +137,14 @@ void db::restore_object(uint32_t id)
         meshes[vector_index].second = meshes_deleted[vector_index].second;
         meshes_deleted[vector_index].second = nullptr;
         }
-      break;    
+      break;
     case PC_KEY:
       if (!pcs[vector_index].second)
         {
         pcs[vector_index].second = pcs_deleted[vector_index].second;
         pcs_deleted[vector_index].second = nullptr;
         }
-      break;    
+      break;
     }
   }
 
@@ -141,7 +167,7 @@ void db::clear()
   delete_objects(meshes);
   delete_objects(meshes_deleted);
   delete_objects(pcs);
-  delete_objects(pcs_deleted);  
+  delete_objects(pcs_deleted);
   }
 
 std::vector<vec3<float>>* get_vertices(const db& _db, uint32_t id)
@@ -154,7 +180,7 @@ std::vector<vec3<float>>* get_vertices(const db& _db, uint32_t id)
       break;
     case PC_KEY:
       return &_db.get_pc(id)->vertices;
-      break;    
+      break;
     }
   return nullptr;
   }
@@ -166,7 +192,7 @@ std::vector<vec3<uint32_t>>* get_triangles(const db& _db, uint32_t id)
     {
     case MESH_KEY:
       return &_db.get_mesh(id)->triangles;
-      break;    
+      break;
     }
   return nullptr;
   }
@@ -196,7 +222,7 @@ bool is_visible(const db& _db, uint32_t id)
       break;
     case PC_KEY:
       return _db.get_pc(id)->visible;
-      break;   
+      break;
     }
   return false;
   }

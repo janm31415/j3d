@@ -9,6 +9,7 @@
 #include "db.h"
 #include "scene.h"
 #include "mouse.h"
+#include "settings.h"
 
 #include <jtk/qbvh.h>
 
@@ -23,6 +24,10 @@ class view
   public:
     view();
     ~view();
+
+    bool file_has_known_extension(const char* filename);
+
+    int64_t load_file(const char* filename);
 
     int64_t load_mesh_from_file(const char* filename);    
 
@@ -43,6 +48,11 @@ class view
     void loop();
 
     void quit();
+
+    void update_current_folder(const std::string& folder);
+
+    void load_next_file_in_folder();
+    void load_previous_file_in_folder();
 
   private:
 
@@ -66,6 +76,10 @@ class view
 
     void render_scene();
 
+    void clear_scene();
+
+    void _load_next_file_in_folder(int32_t step_size);
+
   private:
 
     SDL_Window* _window;
@@ -85,7 +99,7 @@ class view
 
     jtk::image<uint32_t> _screen;
     canvas _canvas;
-    canvas::canvas_settings _settings;
+    settings _settings;
     int32_t _canvas_pos_x, _canvas_pos_y;
 
     jtk::image<pixel> _pixels;

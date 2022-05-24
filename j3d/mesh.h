@@ -9,6 +9,14 @@
 #include <memory>
 #include <string>
 
+enum class mesh_filetype
+  {
+  MESH_FILETYPE_STL,
+  MESH_FILETYPE_PLY,
+  MESH_FILETYPE_OFF,
+  MESH_FILETYPE_OBJ
+  };
+
 struct mesh
   {
   std::vector<jtk::vec3<float>> vertices;
@@ -19,6 +27,8 @@ struct mesh
   jtk::float4x4 cs;
   bool visible;
   };
+
+std::vector<std::pair<std::string, mesh_filetype>> get_valid_mesh_extensions();
 
 jtk::image<uint32_t> make_dummy_texture(int w, int h, int block_size = 32);
 std::vector<uint32_t> convert_vertex_colors(const std::vector<jtk::vec3<float>>& vertex_colors);

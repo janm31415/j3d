@@ -60,3 +60,8 @@ void update_current_folder(settings& s, const char* filename)
       }
     }
   }
+
+std::string get_settings_path()
+  {
+  return jtk::get_folder(jtk::get_executable_path()) + "j3d.json";
+  }

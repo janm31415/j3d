@@ -50,6 +50,8 @@ class db
 
     void delete_object(uint32_t id);
     void restore_object(uint32_t id);
+
+    void delete_object_hard(uint32_t id); // not restorable
     
     void clear();
 
