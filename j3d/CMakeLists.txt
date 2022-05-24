@@ -163,3 +163,10 @@ if (${JTK_THREADING} STREQUAL "tbb")
       ${TBB_LIBRARIES}      
       )	
 endif (${JTK_THREADING} STREQUAL "tbb")   
+
+     
+add_custom_command(TARGET j3d POST_BUILD 
+   COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/matcaps" "${CMAKE_CURRENT_BINARY_DIR}/matcaps")
+add_custom_command(TARGET j3d POST_BUILD 
+   COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/matcaps" "$<TARGET_FILE_DIR:j3d>/matcaps")
+

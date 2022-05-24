@@ -34,3 +34,11 @@ set_target_properties (SDL2-static PROPERTIES FOLDER SDL2)
 set_target_properties (SDL2main PROPERTIES FOLDER SDL2)
 set_target_properties (uninstall PROPERTIES FOLDER SDL2)
 
+set_target_properties (trico PROPERTIES FOLDER trico)
+set_target_properties (trico.tests PROPERTIES FOLDER trico)
+set_target_properties (rply PROPERTIES FOLDER trico)
+set_target_properties (trico_io PROPERTIES FOLDER trico)
+set_target_properties (trico_encoder PROPERTIES FOLDER trico)
+set_target_properties (trico_decoder PROPERTIES FOLDER trico)
+set_target_properties (lz4 PROPERTIES FOLDER trico)
+

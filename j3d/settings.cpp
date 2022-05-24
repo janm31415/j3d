@@ -16,6 +16,7 @@ settings::settings()
   _executable_path = jtk::get_executable_path();
   _index_in_folder = -1;
   _matcap_type = matcap_type::MATCAP_TYPE_INTERNAL_REDWAX;
+  _matcap_file = jtk::get_folder(jtk::get_executable_path())+"matcaps/basic_1.png";
   }
 
 
