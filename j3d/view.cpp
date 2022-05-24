@@ -48,10 +48,10 @@ namespace
       }
     }
 
-  void clear_screen(image<uint32_t>& screen)
+  void clear_screen(image<uint32_t>& screen, const uint32_t clr)
     {
     for (auto& v : screen)
-      v = 0xff000000 | (uint32_t(49) << 16) | (uint32_t(49) << 8) | uint32_t(49);
+      v = clr;
     }
 
   }
@@ -82,7 +82,7 @@ view::view() : _w(1600), _h(900), _window(nullptr)
   //prepare_window();
 
   _screen = image<uint32_t>(_w, _h);
-  clear_screen(_screen);
+  clear_screen(_screen, _settings._background);
 
   _m.left_dragging = false;
   _m.right_dragging = false;
@@ -103,6 +103,7 @@ view::view() : _w(1600), _h(900), _window(nullptr)
   make_matcap(_matcap, _settings._matcap_type, _settings._matcap_file.c_str());
 
   _canvas.resize(_settings._canvas_w, _settings._canvas_h);
+  _canvas.set_background_color(_settings._gradient_top, _settings._gradient_bottom);
   _canvas_pos_x = ((int32_t)_w - (int32_t)_canvas.width()) / 2;
   if (_canvas_pos_x & 3)
     _canvas_pos_x += 4 - (_canvas_pos_x & 3);
@@ -728,7 +729,7 @@ void view::poll_for_events()
         _w = (uint32_t)new_w < _w_max ? (uint32_t)new_w : _w_max;
         _h = (uint32_t)new_h < _h_max ? (uint32_t)new_h : _h_max;
         _screen = image<uint32_t>(_w, _h);
-        clear_screen(_screen);
+        clear_screen(_screen, _settings._background);
         _canvas_pos_x = ((int32_t)_w - (int32_t)_canvas.width()) / 2;
         if (_canvas_pos_x & 3)
           _canvas_pos_x += 4 - (_canvas_pos_x & 3);
@@ -808,6 +809,7 @@ void view::resize_canvas(uint32_t canvas_w, uint32_t canvas_h)
   //if (canvas_h > _h)
   //  canvas_h = _h;
   _canvas.resize(canvas_w, canvas_h);
+  _canvas.set_background_color(_settings._gradient_top, _settings._gradient_bottom);
   _canvas_pos_x = ((int32_t)_w - (int32_t)_canvas.width()) / 2;
   if (_canvas_pos_x & 3)
     _canvas_pos_x += 4 - (_canvas_pos_x & 3);
@@ -1018,6 +1020,59 @@ void view::imgui_ui()
           }
         ImGui::EndMenu();
         }
+      if (ImGui::BeginMenu("Colors"))
+        {
+        float gradient_top_red = (_settings._gradient_top & 255)/255.f;
+        float gradient_top_green = ((_settings._gradient_top >> 8) & 255) / 255.f;
+        float gradient_top_blue = ((_settings._gradient_top >> 16) & 255) / 255.f;
+        float gradient_bottom_red = (_settings._gradient_bottom & 255) / 255.f;
+        float gradient_bottom_green = ((_settings._gradient_bottom >> 8) & 255) / 255.f;
+        float gradient_bottom_blue = ((_settings._gradient_bottom >> 16) & 255) / 255.f;
+        float bg_red = (_settings._background & 255) / 255.f;
+        float bg_green = ((_settings._background >> 8) & 255) / 255.f;
+        float bg_blue = ((_settings._background >> 16) & 255) / 255.f;
+        float coltop[3] = { gradient_top_red, gradient_top_green, gradient_top_blue };
+        float colbottom[3] = { gradient_bottom_red, gradient_bottom_green, gradient_bottom_blue };
+        float colback[3] = { bg_red, bg_green, bg_blue };
+        if (ImGui::ColorEdit3("Gradient top", coltop))
+          {
+          uint32_t r = (uint32_t)(coltop[0] * 255.f);
+          uint32_t g = (uint32_t)(coltop[1] * 255.f);
+          uint32_t b = (uint32_t)(coltop[2] * 255.f);
+          uint32_t clr = 0xff000000 | (b << 16) | (g << 8) | r;
+          _settings._gradient_top = clr;
+          _canvas.set_background_color(_settings._gradient_top, _settings._gradient_bottom);
+          _refresh = true;
+          }
+        if (ImGui::ColorEdit3("Gradient bottom", colbottom))
+          {
+          uint32_t r = (uint32_t)(colbottom[0] * 255.f);
+          uint32_t g = (uint32_t)(colbottom[1] * 255.f);
+          uint32_t b = (uint32_t)(colbottom[2] * 255.f);
+          uint32_t clr = 0xff000000 | (b << 16) | (g << 8) | r;
+          _settings._gradient_bottom = clr;
+          _canvas.set_background_color(_settings._gradient_top, _settings._gradient_bottom);
+          _refresh = true;
+          }
+        if (ImGui::ColorEdit3("Background", colback))
+          {
+          uint32_t r = (uint32_t)(colback[0] * 255.f);
+          uint32_t g = (uint32_t)(colback[1] * 255.f);
+          uint32_t b = (uint32_t)(colback[2] * 255.f);
+          uint32_t clr = 0xff000000 | (b << 16) | (g << 8) | r;
+          _settings._background = clr;
+          _refresh = true;
+          }
+        if (ImGui::Button("Restore colors"))
+          {
+          _settings._gradient_top = 0xff000000;
+          _settings._gradient_bottom = 0xff404040;
+          _settings._background = 0xff000000 | (uint32_t(49) << 16) | (uint32_t(49) << 8) | uint32_t(49);
+          _canvas.set_background_color(_settings._gradient_top, _settings._gradient_bottom);
+          _refresh = true;
+          }
+        ImGui::EndMenu();
+        }
       ImGui::EndMenuBar();
       }
     ImGui::End();
@@ -1058,7 +1113,7 @@ void view::imgui_ui()
     {
     screenshot(screenshotFileChosenPath);
     }
-
+  //ImGui::ShowDemoWindow();
   ImGui::Render();
   }
 
@@ -1075,7 +1130,7 @@ void view::loop()
     if (_window)
       {
       poll_for_events();
-      imgui_ui();
+      imgui_ui();      
       do_canvas_mouse();
       process_keys();
       }
@@ -1089,7 +1144,7 @@ void view::loop()
           }
       }
 
-    clear_screen(_screen);
+    clear_screen(_screen, _settings._background);
     _canvas.blit_onto(_screen, _canvas_pos_x, _canvas_pos_y);
 
     if (_window)

@@ -46,7 +46,7 @@ class canvas
 
     void render_pointclouds_on_image(const scene* s, const jtk::image<pixel>& pix);
 
-    void set_background_color(uint8_t r, uint8_t g, uint8_t b);
+    void set_background_color(uint32_t clr_top = 0xff000000, uint32_t clr_bottom = 0xff404040);
 
     void blit_onto(jtk::image<uint32_t>& screen, int32_t pos_x, int32_t pos_y);
 

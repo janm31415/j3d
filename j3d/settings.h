@@ -17,6 +17,7 @@ struct settings
   uint32_t _canvas_w, _canvas_h;
   matcap_type _matcap_type;
   std::string _matcap_file;
+  uint32_t _gradient_top, _gradient_bottom, _background;
   };
 
 

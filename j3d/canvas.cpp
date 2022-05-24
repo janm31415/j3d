@@ -52,15 +52,26 @@ namespace
     return 0xff000000 | (uint32_t(blue) << 16) | (uint32_t(green) << 8) | uint32_t(red);
     }
     */
-  void fill_background(jtk::image<uint32_t>& bg)
+  void fill_background(jtk::image<uint32_t>& bg, uint32_t clr_top = 0xff000000, uint32_t clr_bottom = 0xff404040)
     {
+    uint32_t top_red = clr_top & 0xff;
+    uint32_t top_green = (clr_top >> 8) & 0xff;
+    uint32_t top_blue = (clr_top >> 16) & 0xff;
+    uint32_t bottom_red = clr_bottom & 0xff;
+    uint32_t bottom_green = (clr_bottom >> 8) & 0xff;
+    uint32_t bottom_blue = (clr_bottom >> 16) & 0xff;
     const uint32_t h = bg.height();
     const uint32_t w = bg.width();
     for (uint32_t y = 0; y < h; ++y)
       {
       uint32_t* p_bg = bg.row(y);
-      float clrf = (float)y / (float)h * 75.f;
-      uint32_t clr = make_color((unsigned char)clrf, (unsigned char)clrf, (unsigned char)clrf);
+      float scale = (float)y / (float)h;
+      uint32_t red = (uint32_t)(scale * bottom_red + (1.f - scale) * top_red);
+      uint32_t green = (uint32_t)(scale * bottom_green + (1.f - scale) * top_green);
+      uint32_t blue = (uint32_t)(scale * bottom_blue + (1.f - scale) * top_blue);
+      uint32_t clr = make_color((unsigned char)red, (unsigned char)green, (unsigned char)blue);
+      //float clrf = (float)y / (float)h * 75.f;
+      //uint32_t clr = make_color((unsigned char)clrf, (unsigned char)clrf, (unsigned char)clrf);
       for (uint32_t x = 0; x < w; ++x, ++p_bg)
         *p_bg = clr;
       }
@@ -119,14 +130,12 @@ void canvas::resize(uint32_t w, uint32_t h)
   _camera = make_default_camera();
   projection_matrix = make_projection_matrix(_camera, w, h);
   projection_matrix_inv = invert_projection_matrix(projection_matrix);
-  fill_background(background);
+  //fill_background(background);
   }
 
-void canvas::set_background_color(uint8_t r, uint8_t g, uint8_t b)
+void canvas::set_background_color(uint32_t clr_top, uint32_t clr_bottom)
   {
-  uint32_t clr = 0xff000000 | ((uint32_t)b << 16) | ((uint32_t)g << 8) | (uint32_t)r;
-  for (auto& c : background)
-    c = clr;
+  fill_background(background, clr_top, clr_bottom);
   }
 
 void canvas::get_pixel(pixel& p, const mouse_data& data, float mouse_offset_x, float mouse_offset_y)

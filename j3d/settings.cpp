@@ -17,6 +17,9 @@ settings::settings()
   _index_in_folder = -1;
   _matcap_type = matcap_type::MATCAP_TYPE_INTERNAL_REDWAX;
   _matcap_file = jtk::get_folder(jtk::get_executable_path())+"matcaps/basic_1.png";
+  _gradient_top = 0xff000000;
+  _gradient_bottom = 0xff404040;
+  _background = 0xff000000 | (uint32_t(49) << 16) | (uint32_t(49) << 8) | uint32_t(49);
   }
 
 
@@ -38,7 +41,9 @@ settings read_settings(const char* filename)
   f["matcap_type"] >> i;
   s._matcap_type = int_to_matcap_type(i);
   f["matcap_file"] >> s._matcap_file;
-
+  f["gradient_top"] >> s._gradient_top;
+  f["gradient_bottom"] >> s._gradient_bottom;
+  f["background"] >> s._background;
   s._current_folder_files = jtk::get_files_from_directory(s._current_folder, false);
 
   return s;
@@ -59,6 +64,9 @@ void write_settings(const settings& s, const char* filename)
   f << "canvas_h" << s._canvas_h;
   f << "matcap_type" << matcap_type_to_int(s._matcap_type);
   f << "matcap_file" << s._matcap_file;
+  f << "gradient_top" << s._gradient_top;
+  f << "gradient_bottom" << s._gradient_bottom;
+  f << "background" << s._background;
   f.release();
   }
 
