@@ -44,11 +44,16 @@ set(JSON
 ${CMAKE_CURRENT_SOURCE_DIR}/../json/json.hpp
 )
 
+set(TINYGLTF
+${CMAKE_CURRENT_SOURCE_DIR}/../tinygltf/tiny_gltf.h
+)
+
 
 set(HDRS
 canvas.h
 camera.h
 db.h
+gltf.h
 io.h
 keyboard.h
 matcap.h
@@ -68,6 +73,7 @@ j3d.rc
 camera.cpp
 canvas.cpp
 db.cpp
+gltf.cpp
 io.cpp
 main.cpp
 matcap.cpp
@@ -101,9 +107,9 @@ add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 include ("../jtk/jtk/jtk.cmake")
 
 if (WIN32)
-add_executable(j3d WIN32 ${HDRS} ${SRCS} ${RESOURCES} ${STB} ${IMGUI} ${JSON})
+add_executable(j3d WIN32 ${HDRS} ${SRCS} ${RESOURCES} ${STB} ${IMGUI} ${JSON} ${TINYGLTF})
 else (WIN32)
-add_executable(j3d ${HDRS} ${SRCS} ${RESOURCES} ${STB} ${IMGUI} ${JSON})
+add_executable(j3d ${HDRS} ${SRCS} ${RESOURCES} ${STB} ${IMGUI} ${JSON} ${TINYGLTF})
 endif (WIN32)
 
 source_group("Header Files" FILES ${HDRS})
@@ -111,6 +117,7 @@ source_group("Source Files" FILES ${SRCS})
 source_group("stb" FILES ${STB})
 source_group("ImGui" FILES ${IMGUI})
 source_group("json" FILES ${JSON})
+source_group("tinygltf" FILES ${TINYGLTF})
 
 
 
