@@ -21,3 +21,9 @@ The default multithreading approach uses `std::thread`. There is however the opt
 
 If you build for a Mac M1 with ARM processor, then set the CMake variables JTK_TARGET to arm.
 
+Large file example
+------------------
+
+The mesh in the image below has 276 million triangles. The file can be rendered at 14 fps with resolution 800x600 on an Intel Xeon W-2145 CPU @ 3.70Ghz.
+
+![](images/j3d_screenshot_2.png)
