@@ -254,6 +254,21 @@ namespace
     return jtk::vec4<float>(denormalize(b.x), denormalize(b.y), denormalize(b.z), denormalize(b.w));
     }
 
+  std::vector<jtk::vec2<float>> normalize_texcoord_buffer(std::vector<jtk::vec2<float>> buffer, const tinygltf::Accessor& accessor)    
+    {
+    if (accessor.minValues.size() < 2 || accessor.maxValues.size() < 2)
+      return buffer;
+    for (auto& pt : buffer)
+      {
+      for (int j = 0; j < 2; ++j)
+        {
+        pt[j] = pt[j] - accessor.minValues[j];
+        pt[j] /= accessor.maxValues[j] - accessor.minValues[j];
+        }
+      }
+    return buffer;
+    }
+
   std::vector<jtk::vec2<float>> get_texcoord_buffer(const tinygltf::Model& model, const tinygltf::Primitive& prim, const char* semantic)
     {
     const auto* accessor = get_accessor(model, prim, semantic);
@@ -268,14 +283,14 @@ namespace
     const auto is_unshort = (accessor->componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) && accessor->normalized;
     if (is_float)
       {
-      return get_buffer<jtk::vec2<float>>(model, *accessor);
+      return normalize_texcoord_buffer(get_buffer<jtk::vec2<float>>(model, *accessor), *accessor);
       }
     else if (is_unbyte)
       {
-      return get_buffer<jtk::vec2<float>, jtk::vec2<uint8_t>>(model, *accessor, denormalize_ubyte2);
+      return normalize_texcoord_buffer(get_buffer<jtk::vec2<float>, jtk::vec2<uint8_t>>(model, *accessor, denormalize_ubyte2), *accessor);
       }
     else if (is_unshort) {
-      return get_buffer<jtk::vec2<float>, jtk::vec2<uint16_t>>(model, *accessor, denormalize_ushort2);
+      return normalize_texcoord_buffer(get_buffer<jtk::vec2<float>, jtk::vec2<uint16_t>>(model, *accessor, denormalize_ushort2), *accessor);
       }
     else
       {
@@ -517,13 +532,6 @@ namespace
       for (uint32_t i = 0; i < indices.size() / 3; ++i)
         {
         jtk::vec3<jtk::vec2<float>> tria_uv(pa.texcoord0[indices[i * 3]], pa.texcoord0[indices[i * 3 + 1]], pa.texcoord0[indices[i * 3 + 2]]);
-        for (int j = 0; j < 3; ++j)
-          {
-          tria_uv[j][0] += 1.f;
-          tria_uv[j][0] *= 0.5f;
-          tria_uv[j][1] += 1.f;
-          tria_uv[j][1] *= 0.5f;
-          }
         uv.push_back(tria_uv);
         }
       }
