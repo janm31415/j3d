@@ -4,6 +4,10 @@
 #include "tinygltf/tiny_gltf.h"
 
 #include "jtk/qbvh.h"
+#include "jtk/file_utils.h"
+
+#include "stb/stb_image.h"
+#include "stb/stb_image_write.h"
 
 #include <string>
 
@@ -80,7 +84,7 @@ namespace
     assert(is_float4x4(v));
     jtk::float4x4 m;
     for (uint32_t i = 0; i < 16; ++i)
-      m[i] = v[i];
+      m[i] = static_cast<float>(v[i]);
     return m;
     }
 
@@ -115,12 +119,6 @@ namespace
     auto res = jtk::matrix_vector_multiply(m, jtk::float4(p[0], p[1], p[2], 1.f));
     return jtk::vec3<float>(res[0] / res[3], res[1] / res[3], res[2] / res[3]);
     }
-
-  //jtk::vec3<float> transform_vector(const jtk::float4x4& m, const jtk::vec3<float>& p)
-  //  {
-  //  auto res = jtk::matrix_vector_multiply(m, jtk::float4(p[0], p[1], p[2], 0.f));
-  //  return jtk::vec3<float>(res[0], res[1], res[2]);
-  //  }
 
   jtk::float4x4 get_local_matrix(const tinygltf::Node& node) {
     if (is_float4x4(node.matrix)) {
@@ -490,9 +488,11 @@ namespace
       t = jtk::vec4<float>(xyz.x, xyz.y, xyz.z, t[3]);
       }
 
+
     const auto index_offset = static_cast<std::uint32_t>(vertices.size());
 
     assert((indices.size() % 3) == 0);
+    triangles.reserve(triangles.size() + indices.size() / 3);
     for (uint32_t i = 0; i < indices.size() / 3; ++i)
       {
       jtk::vec3<uint32_t> tria(indices[i * 3] + index_offset - min_index, indices[i * 3 + 1] + index_offset - min_index, indices[i * 3 + 2] + index_offset - min_index);
@@ -501,24 +501,35 @@ namespace
 
     if (active_attrs.pos)
       {
+      vertices.reserve(vertices.size() + index_range);
       for (uint32_t i = 0; i < index_range; ++i)
         vertices.push_back(pa.pos[min_index + i]);
       }
     if (active_attrs.normal)
       {
+      normals.reserve(normals.size() + index_range);
       for (uint32_t i = 0; i < index_range; ++i)
         normals.push_back(pa.normal[min_index + i]);
       }
     if (active_attrs.texcoord0)
       {
+      uv.reserve(uv.size() + indices.size() / 3);
       for (uint32_t i = 0; i < indices.size() / 3; ++i)
         {
-        jtk::vec3<jtk::vec2<float>> tria_uv(pa.texcoord0[indices[i*3]], pa.texcoord0[indices[i*3+1]], pa.texcoord0[indices[i*3+2]]);
+        jtk::vec3<jtk::vec2<float>> tria_uv(pa.texcoord0[indices[i * 3]], pa.texcoord0[indices[i * 3 + 1]], pa.texcoord0[indices[i * 3 + 2]]);
+        for (int j = 0; j < 3; ++j)
+          {
+          tria_uv[j][0] += 1.f;
+          tria_uv[j][0] *= 0.5f;
+          tria_uv[j][1] += 1.f;
+          tria_uv[j][1] *= 0.5f;
+          }
         uv.push_back(tria_uv);
         }
       }
     if (active_attrs.color0)
       {
+      clrs.reserve(clrs.size() + index_range);
       for (uint32_t i = 0; i < index_range; ++i)
         {
         uint32_t red = (uint32_t)(pa.color0[min_index + i].x * 255.f);
@@ -556,9 +567,235 @@ namespace
       recurse_nodes(vertices, normals, clrs, triangles, uv, model, active_attrs, model_matrix, child_index);
       }
     }
+
+  template <typename T>
+  int add_buffer(tinygltf::Model& model, const std::vector<T>& data)
+    {
+    if (data.empty())
+      return -1;
+    model.buffers.emplace_back();
+    auto& bytes = model.buffers.back().data;
+    bytes.resize(data.size() * sizeof(T));
+    std::memcpy(bytes.data(), data.data(), bytes.size());
+    return static_cast<int>(model.buffers.size() - 1);
+    }
+
+  int add_buffer_view(tinygltf::Model& model, int buffer, int target = TINYGLTF_TARGET_ARRAY_BUFFER)
+    {
+    if (buffer < 0)
+      return -1;
+    model.bufferViews.emplace_back();
+    auto& view = model.bufferViews.back();
+    view.buffer = buffer;
+    view.byteLength = model.buffers[buffer].data.size();
+    view.byteOffset = 0;
+    view.byteStride = 0;
+    view.dracoDecoded = false;
+    view.target = target;
+    return static_cast<int>(model.bufferViews.size() - 1);
+    }
+
+  template <typename T>
+  int add_accessor(tinygltf::Model& model, int buffer_view, int type,
+    int componentType) {
+    if (buffer_view < 0)
+      return -1;
+    model.accessors.emplace_back();
+    auto& acc = model.accessors.back();
+    acc.bufferView = buffer_view;
+    acc.byteOffset = 0;
+    acc.type = type;
+    acc.componentType = componentType;
+    assert(model.bufferViews[buffer_view].byteLength % sizeof(T) ==
+      0); // ...or something went wrong...
+    acc.count =
+      static_cast<int>(model.bufferViews[buffer_view].byteLength / sizeof(T));
+    acc.normalized = false;
+    return static_cast<int>(model.accessors.size() - 1);
+    }
+
+  int add_accessor_float2(tinygltf::Model& model, int buffer_view)
+    {
+    return add_accessor<jtk::vec2<float>>(model, buffer_view, TINYGLTF_TYPE_VEC2,
+      TINYGLTF_COMPONENT_TYPE_FLOAT);
+    }
+
+  int add_accessor_float3(tinygltf::Model& model, int buffer_view)
+    {
+    return add_accessor<jtk::vec3<float>>(model, buffer_view, TINYGLTF_TYPE_VEC3,
+      TINYGLTF_COMPONENT_TYPE_FLOAT);
+    }
+
+  int add_accessor_float4(tinygltf::Model& model, int buffer_view)
+    {
+    return add_accessor<jtk::vec4<float>>(model, buffer_view, TINYGLTF_TYPE_VEC4,
+      TINYGLTF_COMPONENT_TYPE_FLOAT);
+    }
+
+  int add_index_buffer_accessor(tinygltf::Model& model, int index_buffer, std::size_t begin_index, std::size_t end_index)
+    {
+    if (index_buffer < 0)
+      return -1;
+    const int index_count = static_cast<int>(end_index - begin_index);
+    model.bufferViews.emplace_back();
+    auto& view = model.bufferViews.back();
+    view.buffer = index_buffer;
+    view.byteLength = index_count * sizeof(std::uint32_t);
+    view.byteOffset = begin_index * sizeof(std::uint32_t);
+    view.byteStride = 0;
+    view.dracoDecoded = false;
+    view.target = TINYGLTF_TARGET_ELEMENT_ARRAY_BUFFER;
+    model.accessors.emplace_back();
+    auto& accessor = model.accessors.back();
+    accessor.bufferView = static_cast<int>(model.bufferViews.size() - 1);
+    accessor.byteOffset = 0;
+    accessor.type = TINYGLTF_TYPE_SCALAR;
+    accessor.componentType = TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT;
+    accessor.count = index_count;
+    accessor.normalized = false;
+    return static_cast<int>(model.accessors.size() - 1);
+    }
+
+
+  struct gltf_bbox
+    {
+    jtk::vec3<float> min{ FLT_MAX, FLT_MAX, FLT_MAX };
+    jtk::vec3<float> max{ -FLT_MAX, -FLT_MAX, -FLT_MAX };
+    };
+
+  gltf_bbox calculate_bounding_box(const std::vector<jtk::vec3<float>>& v)
+    {
+    gltf_bbox bb;
+    for (const auto& p : v)
+      {
+      bb.min = min(bb.min, p);
+      bb.max = max(bb.max, p);
+      }
+    return bb;
+    }
+
+  bool _write_gltf(const char* filename, const std::vector<jtk::vec3<float>>& vertices, const std::vector<jtk::vec3<float>>& normals, const std::vector<uint32_t>& clrs, const std::vector<jtk::vec3<uint32_t>>& triangles, const std::vector<jtk::vec3<jtk::vec2<float>>>& uv, const jtk::image<uint32_t>& texture, bool binary)
+    {
+    tinygltf::Model model;
+    std::vector<jtk::vec4<float>> tangents;
+    std::vector<jtk::vec2<float>> texcoord0, texcoord1;
+    std::vector<jtk::vec4<float>> color0;
+    color0.reserve(clrs.size());
+    for (auto clr : clrs)
+      {
+      float r = (clr & 255) / 255.f;
+      float g = ((clr >> 8) & 255) / 255.f;
+      float b = ((clr >> 16) & 255) / 255.f;
+      float a = ((clr >> 24) & 255) / 255.f;
+      color0.emplace_back(r, g, b, a);
+      }
+
+    if (!uv.empty())
+      {
+      texcoord0.resize(vertices.size());
+      for (size_t i = 0; i < uv.size(); ++i)
+        {
+        for (int j = 0; j < 3; ++j)
+          {
+          uint32_t vertex_id = triangles[i][j];
+          jtk::vec2<float> vertex_uv = uv[i][j];
+          texcoord0[vertex_id] = vertex_uv;
+          }
+        }
+      }
+
+    const int index_buffer = add_buffer(model, triangles);
+    const int pos_buffer = add_buffer(model, vertices);
+    const int normal_buffer = add_buffer(model, normals);
+    const int tangent_buffer = add_buffer(model, tangents);
+    const int texcoord0_buffer = add_buffer(model, texcoord0);
+    const int texcoord1_buffer = add_buffer(model, texcoord1);
+    const int color0_buffer = add_buffer(model, color0);
+
+    const int pos_buffer_view = add_buffer_view(model, pos_buffer);
+    const int normal_buffer_view = add_buffer_view(model, normal_buffer);
+    const int tangent_buffer_view = add_buffer_view(model, tangent_buffer);
+    const int texcoord0_buffer_view = add_buffer_view(model, texcoord0_buffer);
+    const int texcoord1_buffer_view = add_buffer_view(model, texcoord1_buffer);
+    const int color0_buffer_view = add_buffer_view(model, color0_buffer);
+
+    const int pos_acc = add_accessor_float3(model, pos_buffer_view);
+    const int normal_acc = add_accessor_float3(model, normal_buffer_view);
+    const int tangent_acc = add_accessor_float4(model, tangent_buffer_view);
+    const int texcoord0_acc = add_accessor_float2(model, texcoord0_buffer_view);
+    const int texcoord1_acc = add_accessor_float2(model, texcoord1_buffer_view);
+    const int color0_acc = add_accessor_float4(model, color0_buffer_view);
+
+    const auto bb = calculate_bounding_box(vertices);
+    model.accessors[pos_acc].minValues = { bb.min[0], bb.min[1], bb.min[2] };
+    model.accessors[pos_acc].maxValues = { bb.max[0], bb.max[1], bb.max[2] };
+
+    model.scenes.emplace_back();
+    model.scenes.back().nodes.push_back(0);
+    model.defaultScene = 0;
+
+    model.nodes.emplace_back();
+    model.nodes.back().mesh = 0;
+
+    model.materials.emplace_back();
+    model.materials.back().pbrMetallicRoughness.baseColorTexture.index = texture.width() > 0 ? 0 : -1;
+    model.materials.back().values["baseColorTexture"].json_double_value["index"] = 0;
+
+    tinygltf::Primitive base_gltf_prim;
+    base_gltf_prim.mode = TINYGLTF_MODE_TRIANGLES;
+    if (pos_acc >= 0)
+      base_gltf_prim.attributes["POSITION"] = pos_acc;
+    if (normal_acc >= 0)
+      base_gltf_prim.attributes["NORMAL"] = normal_acc;
+    if (tangent_acc >= 0)
+      base_gltf_prim.attributes["TANGENT"] = tangent_acc;
+    if (texcoord0_acc >= 0)
+      base_gltf_prim.attributes["TEXCOORD_0"] = texcoord0_acc;
+    if (texcoord1_acc >= 0)
+      base_gltf_prim.attributes["TEXCOORD_1"] = texcoord1_acc;
+    if (color0_acc >= 0)
+      base_gltf_prim.attributes["COLOR_0"] = color0_acc;
+    model.meshes.emplace_back();
+
+    model.meshes.back().primitives.push_back(base_gltf_prim);
+    tinygltf::Primitive& gltf_prim = model.meshes.back().primitives.back();
+    gltf_prim.material = 0;
+    gltf_prim.indices = add_index_buffer_accessor(model, index_buffer, 0, triangles.size() * 3);
+
+    if (texture.width() > 0 && texture.height() > 0)
+      {
+      std::string fn(filename);
+      model.textures.emplace_back();
+      model.textures.back().source = 0;
+      model.images.emplace_back();
+      model.images.back().uri = jtk::get_filename(fn) + ".png";
+      model.images.back().width = texture.width();
+      model.images.back().height = texture.height();
+      model.images.back().bits = 8;
+      model.images.back().component = 4;
+      model.images.back().pixel_type = TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE;
+      std::vector<unsigned char> raw(texture.width() * texture.height() * 4);
+      uint32_t* p_raw = (uint32_t*)raw.data();
+      for (uint32_t y = 0; y < texture.height(); ++y)
+        {
+        const uint32_t* p_im = texture.data() + y * texture.stride();
+        for (uint32_t x = 0; x < texture.width(); ++x)
+          {
+          *p_raw++ = *p_im++;
+          }
+        }
+      model.images.back().image.swap(raw);
+      }
+
+    tinygltf::TinyGLTF ctx;
+    ctx.SetStoreOriginalJSONForExtrasAndExtensions(true);
+    return ctx.WriteGltfSceneToFile(&model, filename, true, true, true, binary);
+    }
+
   }
 
-bool read_gltf(const char* filename, std::vector<jtk::vec3<float>>& vertices, std::vector<jtk::vec3<float>>& normals, std::vector<uint32_t>& clrs, std::vector<jtk::vec3<uint32_t>>& triangles, std::vector<jtk::vec3<jtk::vec2<float>>>& uv)
+
+bool read_gltf(const char* filename, std::vector<jtk::vec3<float>>& vertices, std::vector<jtk::vec3<float>>& normals, std::vector<uint32_t>& clrs, std::vector<jtk::vec3<uint32_t>>& triangles, std::vector<jtk::vec3<jtk::vec2<float>>>& uv, jtk::image<uint32_t>& texture)
   {
   vertices.clear();
   normals.clear();
@@ -592,5 +829,49 @@ bool read_gltf(const char* filename, std::vector<jtk::vec3<float>>& vertices, st
     recurse_nodes(vertices, normals, clrs, triangles, uv, model, active_attrs, model_matrix, node_index);
     }
 
+  if (!model.images.empty())
+    {
+    std::string fn(filename);
+    std::string uri = model.images.front().uri;
+    if (!uri.empty())
+      {
+      std::string image_path = jtk::get_folder(fn) + uri;
+      int w, h, nr_of_channels;
+      unsigned char* im = stbi_load(image_path.c_str(), &w, &h, &nr_of_channels, 4);
+      if (im)
+        {
+        texture = jtk::span_to_image(w, h, w, (const uint32_t*)im);
+        stbi_image_free(im);
+        }
+      }
+    else if (!model.images.front().image.empty())
+      {
+      const auto& im = model.images.front();
+      if (im.bits == 8 && im.component == 4)
+        {
+        texture = jtk::image<uint32_t>(im.width, im.height);
+        const uint32_t* p_im = (const uint32_t*)im.image.data();
+        for (uint32_t y = 0; y < (uint32_t)im.height; ++y)
+          {
+          uint32_t* p_tex = texture.data() + y*texture.stride();
+          for (uint32_t x = 0; x < (uint32_t)im.width; ++x)
+            {
+            *p_tex++ = *p_im++;
+            }
+          }
+        }
+      }
+    }
+
   return true;
+  }
+
+bool write_glb(const char* filename, const std::vector<jtk::vec3<float>>& vertices, const std::vector<jtk::vec3<float>>& normals, const std::vector<uint32_t>& clrs, const std::vector<jtk::vec3<uint32_t>>& triangles, const std::vector<jtk::vec3<jtk::vec2<float>>>& uv, const jtk::image<uint32_t>& texture)
+  {
+  return _write_gltf(filename, vertices, normals, clrs, triangles, uv, texture, true);
+  }
+
+bool write_gltf(const char* filename, const std::vector<jtk::vec3<float>>& vertices, const std::vector<jtk::vec3<float>>& normals, const std::vector<uint32_t>& clrs, const std::vector<jtk::vec3<uint32_t>>& triangles, const std::vector<jtk::vec3<jtk::vec2<float>>>& uv, const jtk::image<uint32_t>& texture)
+  {
+  return _write_gltf(filename, vertices, normals, clrs, triangles, uv, texture, false);
   }

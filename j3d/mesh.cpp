@@ -140,7 +140,7 @@ bool read_from_file(mesh& m, const std::string& filename)
         {
         std::vector<jtk::vec3<float>> vertex_normals;
         std::vector<uint32_t> vertex_colors;
-        if (!read_gltf(filename.c_str(), m.vertices, vertex_normals, vertex_colors, m.triangles, m.uv_coordinates))
+        if (!read_gltf(filename.c_str(), m.vertices, vertex_normals, vertex_colors, m.triangles, m.uv_coordinates, m.texture))
           return false;
         if (!vertex_colors.empty())
           {
@@ -246,7 +246,18 @@ bool write_to_file(const mesh& m, const std::string& filename)
     std::vector<jtk::vec3<float>> normals;
     return write_obj(filename.c_str(), m.vertices, normals, colors, m.triangles, m.uv_coordinates, m.texture);
     }
-
+  else if (ext == "glb")
+    {
+    std::vector<uint32_t> colors = convert_vertex_colors(m.vertex_colors);
+    std::vector<jtk::vec3<float>> normals;
+    return write_glb(filename.c_str(), m.vertices, normals, colors, m.triangles, m.uv_coordinates, m.texture);
+    }
+  else if (ext == "gltf")
+    {
+    std::vector<uint32_t> colors = convert_vertex_colors(m.vertex_colors);
+    std::vector<jtk::vec3<float>> normals;
+    return write_gltf(filename.c_str(), m.vertices, normals, colors, m.triangles, m.uv_coordinates, m.texture);
+    }
   return false;
   }
 
