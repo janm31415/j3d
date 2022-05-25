@@ -95,7 +95,7 @@ void unzoom(scene& s)
     s.pivot[j] = (s.min_bb[j] + s.max_bb[j])*0.5f;
   s.coordinate_system[12] = s.pivot[0];
   s.coordinate_system[13] = s.pivot[1];
-  s.coordinate_system[14] = s.pivot[2] + s.diagonal * 1.5f;
+  s.coordinate_system[14] = s.pivot[2] + s.diagonal * 2.f;
 
   s.coordinate_system_inv = invert_orthonormal(s.coordinate_system);
   }
