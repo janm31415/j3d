@@ -5,6 +5,7 @@
 
 #include "jtk/qbvh.h"
 #include "jtk/file_utils.h"
+#include "jtk/geometry.h"
 
 #include "stb/stb_image.h"
 #include "stb/stb_image_write.h"
@@ -254,7 +255,7 @@ namespace
     return jtk::vec4<float>(denormalize(b.x), denormalize(b.y), denormalize(b.z), denormalize(b.w));
     }
 
-  std::vector<jtk::vec2<float>> normalize_texcoord_buffer(std::vector<jtk::vec2<float>> buffer, const tinygltf::Accessor& accessor)    
+  std::vector<jtk::vec2<float>> normalize_texcoord_buffer(std::vector<jtk::vec2<float>> buffer, const tinygltf::Accessor& accessor)
     {
     if (accessor.minValues.size() < 2 || accessor.maxValues.size() < 2)
       return buffer;
@@ -262,8 +263,8 @@ namespace
       {
       for (int j = 0; j < 2; ++j)
         {
-        pt[j] = pt[j] - accessor.minValues[j];
-        pt[j] /= accessor.maxValues[j] - accessor.minValues[j];
+        pt[j] = pt[j] - (float)accessor.minValues[j];
+        pt[j] /= (float)(accessor.maxValues[j] - accessor.minValues[j]);
         }
       }
     return buffer;
@@ -682,14 +683,177 @@ namespace
     return bb;
     }
 
+  std::vector<int32_t> split_by_uv(const std::vector<jtk::vec3<float>>& vertices, const std::vector<jtk::vec3<uint32_t>>& triangles, const std::vector<jtk::vec3<jtk::vec2<float>>>& uv)
+    {    
+    auto compare = [&](size_t tria1, size_t tria2)
+      {
+      uint32_t v0, v1;
+      if (!jtk::edge_between_triangles(v0, v1, triangles[tria1], triangles[tria2]))
+        return false;
+      uint32_t t1v0 = 0;
+      uint32_t t1v1 = 0;
+      uint32_t t2v0 = 0;
+      uint32_t t2v1 = 0;
+      while (triangles[tria1][t1v0] != v0)
+        ++t1v0;
+      while (triangles[tria1][t1v1] != v1)
+        ++t1v1;
+      while (triangles[tria2][t2v0] != v0)
+        ++t2v0;
+      while (triangles[tria2][t2v1] != v1)
+        ++t2v1;
+      const bool result = (uv[tria1][t1v0] == uv[tria2][t2v0]) && (uv[tria1][t1v1] == uv[tria2][t2v1]);
+      return result;
+      };    
+    std::vector<bool> vertex_has_multiple_uv(vertices.size(), false);
+    std::vector<jtk::vec2<float>> vertuv(vertices.size(), jtk::vec2<float>(-1, -1));
+    for (size_t i = 0; i < triangles.size(); ++i)
+      {
+      const auto& tria = triangles[i];
+      for (int j = 0; j < 3; ++j)
+        {
+        uint32_t v = tria[j];
+        if (vertuv[v][0] == -1)
+          {
+          vertuv[v] = uv[i][j];
+          }
+        else
+          {
+          if (vertuv[v] != uv[i][j])
+            vertex_has_multiple_uv[v] = true;
+          }
+        }
+      }
+    std::vector<int32_t> sh;
+    sh.reserve(triangles.size());
+    int32_t count = 1;
+    for (size_t i = 0; i < triangles.size(); ++i)
+      {
+      const auto& tria = triangles[i];
+      bool single_uv_vertices = true;
+      for (int j = 0; j < 3; ++j)
+        {
+        single_uv_vertices &= !vertex_has_multiple_uv[tria[j]];
+        }
+      if (single_uv_vertices)
+        sh.push_back(0);
+      else
+        sh.push_back(count++);
+      }
+    return sh;  
+    }
+
+  struct shell_info
+    {
+    shell_info(uint32_t si, uint32_t ei) : start_index(si), end_index(ei) {}
+    uint32_t start_index;
+    uint32_t end_index;
+    };
+
   bool _write_gltf(const char* filename, const std::vector<jtk::vec3<float>>& vertices, const std::vector<jtk::vec3<float>>& normals, const std::vector<uint32_t>& clrs, const std::vector<jtk::vec3<uint32_t>>& triangles, const std::vector<jtk::vec3<jtk::vec2<float>>>& uv, const jtk::image<uint32_t>& texture, bool binary)
     {
+    const std::vector<jtk::vec3<uint32_t>>* p_triangles = nullptr;
+    const std::vector<jtk::vec3<float>>* p_vertices = nullptr;
+    const std::vector<jtk::vec3<float>>* p_normals = nullptr;
+    const std::vector<uint32_t>* p_colors = nullptr;
+
+    std::vector<jtk::vec3<uint32_t>> triangles_rearranged_per_shell;
+    std::vector<jtk::vec3<float>> vertices_rearranged_per_shell;
+    std::vector<jtk::vec3<float>> normals_rearranged_per_shell;
+    std::vector<uint32_t> colors_rearranged_per_shell;
+    std::vector<jtk::vec2<float>> texcoord0;
+
+
+    if (!uv.empty())
+      { 
+      std::vector<int32_t> sh = split_by_uv(vertices, triangles, uv);
+      int32_t nr_of_shells = *std::max_element(sh.begin(), sh.end()) + 1;
+      std::vector<std::vector<uint32_t>> my_shells(nr_of_shells);
+      uint32_t cnt = 0;
+      for (auto s : sh)
+        {
+        my_shells[s].push_back(cnt);
+        ++cnt;
+        }
+      triangles_rearranged_per_shell.reserve(triangles.size());
+      vertices_rearranged_per_shell.reserve(vertices.size());
+      if (!normals.empty())
+        normals_rearranged_per_shell.reserve(vertices.size());
+      if (!clrs.empty())
+        colors_rearranged_per_shell.reserve(vertices.size());
+      std::vector<int32_t> vertex_map(vertices.size(), -1);
+      uint32_t vertex_idx = 0;
+      for (const auto& current_shell : my_shells)
+        {
+        for (const auto triangle_id : current_shell)
+          {
+          uint32_t v0 = triangles[triangle_id][0];
+          uint32_t v1 = triangles[triangle_id][1];
+          uint32_t v2 = triangles[triangle_id][2];
+          if (vertex_map[v0] < 0)
+            {
+            vertex_map[v0] = vertex_idx++;
+            vertices_rearranged_per_shell.push_back(vertices[v0]);
+            if (!normals.empty())
+              normals_rearranged_per_shell.push_back(normals[v0]);
+            if (!clrs.empty())
+              colors_rearranged_per_shell.push_back(clrs[v0]);
+            texcoord0.push_back(uv[triangle_id][0]);
+            }
+          if (vertex_map[v1] < 0)
+            {
+            vertex_map[v1] = vertex_idx++;
+            vertices_rearranged_per_shell.push_back(vertices[v1]);
+            if (!normals.empty())
+              normals_rearranged_per_shell.push_back(normals[v1]);
+            if (!clrs.empty())
+              colors_rearranged_per_shell.push_back(clrs[v1]);
+            texcoord0.push_back(uv[triangle_id][1]);
+            }
+          if (vertex_map[v2] < 0)
+            {
+            vertex_map[v2] = vertex_idx++;
+            vertices_rearranged_per_shell.push_back(vertices[v2]);
+            if (!normals.empty())
+              normals_rearranged_per_shell.push_back(normals[v2]);
+            if (!clrs.empty())
+              colors_rearranged_per_shell.push_back(clrs[v2]);
+            texcoord0.push_back(uv[triangle_id][2]);
+            }
+          jtk::vec3<uint32_t> tria(vertex_map[v0], vertex_map[v1], vertex_map[v2]);
+          triangles_rearranged_per_shell.push_back(tria);
+          }
+        for (const auto triangle_id : current_shell)
+          {
+          uint32_t v0 = triangles[triangle_id][0];
+          uint32_t v1 = triangles[triangle_id][1];
+          uint32_t v2 = triangles[triangle_id][2];
+          vertex_map[v0] = -1;
+          vertex_map[v1] = -1;
+          vertex_map[v2] = -1;
+          }
+        }
+
+      p_triangles = &triangles_rearranged_per_shell;
+      p_vertices = &vertices_rearranged_per_shell;
+      p_colors = &colors_rearranged_per_shell;
+      p_normals = &normals_rearranged_per_shell;
+      }
+    else
+      {
+      p_triangles = &triangles;
+      p_vertices = &vertices;
+      p_normals = &normals;
+      p_colors = &clrs;
+      //shells.emplace_back((uint32_t)0, (uint32_t)triangles.size());
+      }
+
     tinygltf::Model model;
     std::vector<jtk::vec4<float>> tangents;
-    std::vector<jtk::vec2<float>> texcoord0, texcoord1;
+    std::vector<jtk::vec2<float>> texcoord1;
     std::vector<jtk::vec4<float>> color0;
-    color0.reserve(clrs.size());
-    for (auto clr : clrs)
+    color0.reserve(p_colors->size());
+    for (auto clr : *p_colors)
       {
       float r = (clr & 255) / 255.f;
       float g = ((clr >> 8) & 255) / 255.f;
@@ -698,23 +862,9 @@ namespace
       color0.emplace_back(r, g, b, a);
       }
 
-    if (!uv.empty())
-      {
-      texcoord0.resize(vertices.size());
-      for (size_t i = 0; i < uv.size(); ++i)
-        {
-        for (int j = 0; j < 3; ++j)
-          {
-          uint32_t vertex_id = triangles[i][j];
-          jtk::vec2<float> vertex_uv = uv[i][j];
-          texcoord0[vertex_id] = vertex_uv;
-          }
-        }
-      }
-
-    const int index_buffer = add_buffer(model, triangles);
-    const int pos_buffer = add_buffer(model, vertices);
-    const int normal_buffer = add_buffer(model, normals);
+    const int index_buffer = add_buffer(model, *p_triangles);
+    const int pos_buffer = add_buffer(model, *p_vertices);
+    const int normal_buffer = add_buffer(model, *p_normals);
     const int tangent_buffer = add_buffer(model, tangents);
     const int texcoord0_buffer = add_buffer(model, texcoord0);
     const int texcoord1_buffer = add_buffer(model, texcoord1);
@@ -768,7 +918,7 @@ namespace
     model.meshes.back().primitives.push_back(base_gltf_prim);
     tinygltf::Primitive& gltf_prim = model.meshes.back().primitives.back();
     gltf_prim.material = 0;
-    gltf_prim.indices = add_index_buffer_accessor(model, index_buffer, 0, triangles.size() * 3);
+    gltf_prim.indices = add_index_buffer_accessor(model, index_buffer, 0, p_triangles->size() * 3);
 
     if (texture.width() > 0 && texture.height() > 0)
       {
@@ -861,7 +1011,7 @@ bool read_gltf(const char* filename, std::vector<jtk::vec3<float>>& vertices, st
         const uint32_t* p_im = (const uint32_t*)im.image.data();
         for (uint32_t y = 0; y < (uint32_t)im.height; ++y)
           {
-          uint32_t* p_tex = texture.data() + y*texture.stride();
+          uint32_t* p_tex = texture.data() + y * texture.stride();
           for (uint32_t x = 0; x < (uint32_t)im.width; ++x)
             {
             *p_tex++ = *p_im++;
