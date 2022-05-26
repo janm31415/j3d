@@ -36,3 +36,4 @@ Thirdparty
 * SDL2 (https://www.libsdl.org/)
 * stb (https://github.com/nothings/stb)
 * tinygltf (https://github.com/syoyo/tinygltf)
+* utfcpp (https://github.com/nemtrif/utfcpp)
