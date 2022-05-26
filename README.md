@@ -28,6 +28,22 @@ The mesh in the image below has 276 million triangles. The file can be rendered 
 
 ![](images/j3d_screenshot_2.png)
 
+Conversion to MagicaVoxel example
+---------------------------------
+
+We start from a Wavefront obj file that was downloaded from https://free3d.com/nl/3d-model/skull-v3--785914.html.
+
+![](images/j3d_screenshot_skull_obj.png)
+
+We saved this file as a .vox file, which is the MagicaVoxel file format (https://ephtracy.github.io/). The resolution of the voxel file can be set via the Vox menu. In this example the size of the largest dimension equals 100 voxels.
+
+![](images/j3d_screenshot_skull_vox.png)
+
+The generated .vox file can be loaded in MagicaVoxel.
+
+![](images/j3d_magicka_voxel.png)
+
+
 Thirdparty
 ----------
 * imgui (https://github.com/ocornut/imgui)
