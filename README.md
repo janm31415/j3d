@@ -27,3 +27,13 @@ Large file example
 The mesh in the image below has 276 million triangles. The file can be rendered at 14 fps with resolution 800x600 on an Intel Xeon W-2145 CPU @ 3.70Ghz.
 
 ![](images/j3d_screenshot_2.png)
+
+Thirdparty
+----------
+* imgui (https://github.com/ocornut/imgui)
+* json.hpp (https://github.com/nlohmann/json)
+* opengametools (https://github.com/jpaver/opengametools)
+* SDL2 (https://www.libsdl.org/)
+* stb (https://github.com/nothings/stb)
+* tinygltf (https://github.com/syoyo/tinygltf)
+* utfcpp (https://github.com/nemtrif/utfcpp)
