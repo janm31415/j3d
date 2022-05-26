@@ -280,7 +280,18 @@ bool view::file_has_known_extension(const char* filename)
 
 int64_t view::load_file(const char* filename)
   {
+#ifdef _WIN32
+  std::wstring wfilename = jtk::convert_string_to_wstring(std::string(filename));
+  long length = GetShortPathName(wfilename.c_str(), NULL, 0);
+  wchar_t* buffer = new wchar_t[length];
+  length = GetShortPathName(wfilename.c_str(), buffer, length);
+  std::wstring wshortfilename(buffer);
+  std::string shortfilename = jtk::convert_wstring_to_string(wshortfilename);
+  int64_t id = load_mesh_from_file(shortfilename.c_str());
+  delete [] buffer;
+#else
   int64_t id = load_mesh_from_file(filename);
+#endif
   if (id < 0)
     id = load_pc_from_file(filename);
   else

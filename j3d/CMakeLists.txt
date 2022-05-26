@@ -110,6 +110,7 @@ endif (UNIX)
 add_definitions(-D_SCL_SECURE_NO_WARNINGS)
 add_definitions(-DMEMORY_LEAK_TRACKING)
 add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+add_definitions(-DUNICODE)
 
 include ("../jtk/jtk/jtk.cmake")
 
