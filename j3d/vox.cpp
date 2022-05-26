@@ -95,6 +95,51 @@ namespace
     data[idx] = value;
     }
 
+  ogt_vox_rgba index_to_color(uint8_t idx)
+    {
+    ogt_vox_rgba out;
+    out.a = 255;
+    uint8_t red = (idx >> 5) & 7;
+    uint8_t green = (idx >> 2) & 7;
+    uint8_t blue = (idx) & 7;
+    out.r = red*32 + 16;
+    out.g = green*32 + 16;
+    out.b = blue*64 + 32;
+    if (idx == 1)
+      {
+      out.r = 0;
+      out.g = 0;
+      out.b = 0;
+      }
+    if (idx == 255)
+      {
+      out.r = 255;
+      out.g = 255;
+      out.b = 255;
+      }
+    return out;
+    }
+
+  uint8_t color_to_index(uint8_t r, uint8_t g, uint8_t b)
+    {
+    if (r < 16)
+      r = 0;
+    else
+      r -= 16;
+    if (g < 16)
+      g = 0;
+    else
+      g -= 16;
+    if (b < 32)
+      b = 0;
+    else
+      b -= 32;
+    uint8_t ret = ((r >> 5) << 5) | ((g >> 5) << 2) | (b >> 6);
+    if (ret == 0)
+      return 1;
+    return ret;
+    }
+
   }
 
 bool read_vox(const char* filename, std::vector<jtk::vec3<float>>& vertices, std::vector<uint32_t>& clrs, std::vector<jtk::vec3<uint32_t>>& triangles)
@@ -111,10 +156,10 @@ bool read_vox(const char* filename, std::vector<jtk::vec3<float>>& vertices, std
 
   // put the color index into the alpha component of every color in the palette
   ogt_vox_palette palette = p_scene->palette;
-  for (uint32_t i = 0; i < 256; ++i)
-    {
-    palette.color[i].a = (uint8_t)i;
-    }
+  //for (uint32_t i = 0; i < 256; ++i)
+  //  {
+  //  palette.color[i].a = (uint8_t)i;
+  //  }
 
   // meshify all models.
   ogt_voxel_meshify_context meshify_context = {};
@@ -198,7 +243,13 @@ bool read_vox(const char* filename, std::vector<jtk::vec3<float>>& vertices, std
   }
 
 
-bool write_vox(const char* filename, const std::vector<jtk::vec3<float>>& vertices, const std::vector<jtk::vec3<uint32_t>>& triangles, uint32_t max_dim)
+bool write_vox(const char* filename,
+  const std::vector<jtk::vec3<float>>& vertices,
+  const std::vector<jtk::vec3<float>>& clrs,
+  const std::vector<jtk::vec3<uint32_t>>& triangles,
+  const std::vector<jtk::vec3<jtk::vec2<float>>>& uv,
+  const jtk::image<uint32_t>& texture,
+  uint32_t max_dim)
   {
   jtk::vec3<float> min_bb, max_bb;
   compute_bb(min_bb, max_bb, (uint32_t)vertices.size(), vertices.data());
@@ -207,7 +258,7 @@ bool write_vox(const char* filename, const std::vector<jtk::vec3<float>>& vertic
     largest_dim = 1;
   if ((max_bb[2] - min_bb[2]) > (max_bb[largest_dim] - min_bb[largest_dim]))
     largest_dim = 2;
-  
+
   uint32_t dim[3] = { (uint32_t)(max_dim * (max_bb[0] - min_bb[0]) / (max_bb[largest_dim] - min_bb[largest_dim])),
      (uint32_t)(max_dim * (max_bb[1] - min_bb[1]) / (max_bb[largest_dim] - min_bb[largest_dim])),
      (uint32_t)(max_dim * (max_bb[2] - min_bb[2]) / (max_bb[largest_dim] - min_bb[largest_dim])) };
@@ -217,6 +268,11 @@ bool write_vox(const char* filename, const std::vector<jtk::vec3<float>>& vertic
 
   uint8_t* data = new uint8_t[dim[0] * dim[1] * dim[2]];
   memset((void*)data, 0, dim[0] * dim[1] * dim[2]);
+
+  bool use_vertex_colors = !clrs.empty();
+  bool use_texture = !uv.empty() && texture.width() > 0 && texture.height() > 0;
+  if (use_texture)
+    use_vertex_colors = false;
 
   std::unique_ptr<jtk::qbvh> bvh = std::unique_ptr<jtk::qbvh>(new jtk::qbvh(triangles, vertices.data()));
 
@@ -229,14 +285,15 @@ bool write_vox(const char* filename, const std::vector<jtk::vec3<float>>& vertic
       direction = jtk::float4(0, 0, 2, 0);
     int dim1 = (direction_dim + 1) % 3;
     int dim2 = (direction_dim + 2) % 3;
-    for (uint32_t d1 = 0; d1 < dim[dim1]; ++d1)
+    //for (uint32_t d1 = 0; d1 < dim[dim1]; ++d1)
+    jtk::parallel_for((uint32_t)0, dim[dim1], [&](uint32_t d1)
       {
       for (uint32_t d2 = 0; d2 < dim[dim2]; ++d2)
         {
         jtk::vec3<float> ray_start;
         ray_start[direction_dim] = min_bb[direction_dim];
-        ray_start[dim1] = ((d1 + 0.5f) / (double)dim[dim1]) * (max_bb[dim1] - min_bb[dim1]) + min_bb[dim1];
-        ray_start[dim2] = ((d2 + 0.5f) / (double)dim[dim2]) * (max_bb[dim2] - min_bb[dim2]) + min_bb[dim2];
+        ray_start[dim1] = ((d1 + 0.5f) / (float)dim[dim1]) * (max_bb[dim1] - min_bb[dim1]) + min_bb[dim1];
+        ray_start[dim2] = ((d2 + 0.5f) / (float)dim[dim2]) * (max_bb[dim2] - min_bb[dim2]) + min_bb[dim2];
         jtk::ray r;
         r.orig = jtk::float4(ray_start[0], ray_start[1], ray_start[2], 1.f);
         r.dir = direction;
@@ -251,6 +308,27 @@ bool write_vox(const char* filename, const std::vector<jtk::vec3<float>>& vertic
           const uint32_t v1 = triangles[triangle_ids[i]][1];
           const uint32_t v2 = triangles[triangle_ids[i]][2];
           const auto pos = vertices[v0] * (1.f - hit.u - hit.v) + hit.u * vertices[v1] + hit.v * vertices[v2];
+          jtk::vec3<float> clr(1, 1, 1);
+          if (use_texture)
+            {
+            const auto& uvcoords = uv[triangle_ids[i]];
+            auto coord = (1.f - hit.u - hit.v) * uvcoords[0] + hit.u * uvcoords[1] + hit.v * uvcoords[2];
+            coord[0] = std::max(std::min(coord[0], 1.f), 0.f);
+            coord[1] = std::max(std::min(coord[1], 1.f), 0.f);
+            int x = (int)(coord[0] * (texture.width() - 1));
+            int y = (int)(coord[1] * (texture.height() - 1));
+            const uint32_t color = texture(x, y);
+            clr.x = (color & 255) / 255.f;
+            clr.y = ((color >> 8) & 255) / 255.f;
+            clr.z = ((color >> 16) & 255) / 255.f;
+            }
+          else if (use_vertex_colors)
+            {
+            const auto& c0 = clrs[v0];
+            const auto& c1 = clrs[v1];
+            const auto& c2 = clrs[v2];
+            clr = c0 * (1.f - hit.u - hit.v) + hit.u * c1 + hit.v * c2;
+            }
           float x = (pos.x - min_bb[0]) / (max_bb[0] - min_bb[0]);
           uint32_t X = (uint32_t)(x * dim[0]);
           if (X == dim[0])
@@ -263,10 +341,11 @@ bool write_vox(const char* filename, const std::vector<jtk::vec3<float>>& vertic
           uint32_t Z = (uint32_t)(z * dim[2]);
           if (Z == dim[2])
             Z = dim[2] - 1;
-          set_voxel(data, 255, X, Y, Z, dim);
+          uint8_t color_index = color_to_index((uint8_t)(clr.x*255.f), (uint8_t)(clr.y * 255.f), (uint8_t)(clr.z * 255.f));
+          set_voxel(data, color_index, X, Y, Z, dim);
           }
         }
-      }
+      });
     }
 
   ogt_vox_model* model = new ogt_vox_model;
@@ -275,13 +354,14 @@ bool write_vox(const char* filename, const std::vector<jtk::vec3<float>>& vertic
   model->size_z = dim[2];
   model->voxel_data = data;
 
-  ogt_vox_palette palette;
-  for (int i = 0; i < 256; ++i)
+  ogt_vox_palette palette = ogt_vox_palette();
+  for (uint32_t i = 0; i < 256; ++i)
     {
-    palette.color[i].r = (uint8_t)i;
-    palette.color[i].g = (uint8_t)i;
-    palette.color[i].b = (uint8_t)i;
-    palette.color[i].a = 255;
+    auto color = index_to_color((uint8_t)i);
+    palette.color[i].r = color.r;
+    palette.color[i].g = color.g;
+    palette.color[i].b = color.b;
+    palette.color[i].a = color.a;
     }
 
   ogt_vox_transform identity_transform = _vox_transform_identity();

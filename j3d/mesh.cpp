@@ -273,7 +273,7 @@ bool write_to_file(const mesh& m, const std::string& filename)
     }
   else if (ext == "vox")
     {
-    return write_vox(filename.c_str(), m.vertices, m.triangles);
+    return write_vox(filename.c_str(), m.vertices, m.vertex_colors, m.triangles, m.uv_coordinates, m.texture);
     }
   return false;
   }
