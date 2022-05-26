@@ -1122,7 +1122,7 @@ void view::imgui_ui()
     }
 
   static ImGuiFs::Dialog open_file_dlg(false, true, false);
-  const char* openFileChosenPath = open_file_dlg.chooseFileDialog(_openFileDialog, _settings._current_folder.c_str(), ".ply;.stl;.obj;.trc;.xyz;.pts;.gltf;.glb", "Open file", ImVec2(-1, -1), ImVec2(50, 50));
+  const char* openFileChosenPath = open_file_dlg.chooseFileDialog(_openFileDialog, _settings._current_folder.c_str(), ".ply;.stl;.obj;.trc;.xyz;.pts;.gltf;.glb;.vox", "Open file", ImVec2(-1, -1), ImVec2(50, 50));
   _openFileDialog = false;
   if (strlen(openFileChosenPath) > 0)
     {

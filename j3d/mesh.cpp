@@ -1,6 +1,7 @@
 #include "mesh.h"
 #include "io.h"
 #include "gltf.h"
+#include "vox.h"
 
 #include <jtk/geometry.h>
 
@@ -66,6 +67,7 @@ std::vector<std::pair<std::string, mesh_filetype>> get_valid_mesh_extensions()
   extensions.emplace_back(std::string("trc"), mesh_filetype::MESH_FILETYPE_TRC);
   extensions.emplace_back(std::string("gltf"), mesh_filetype::MESH_FILETYPE_GLTF);
   extensions.emplace_back(std::string("glb"), mesh_filetype::MESH_FILETYPE_GLTF);
+  extensions.emplace_back(std::string("vox"), mesh_filetype::MESH_FILETYPE_VOX);
 
   return extensions;
   }
@@ -141,6 +143,17 @@ bool read_from_file(mesh& m, const std::string& filename)
         std::vector<jtk::vec3<float>> vertex_normals;
         std::vector<uint32_t> vertex_colors;
         if (!read_gltf(filename.c_str(), m.vertices, vertex_normals, vertex_colors, m.triangles, m.uv_coordinates, m.texture))
+          return false;
+        if (!vertex_colors.empty())
+          {
+          m.vertex_colors = convert_vertex_colors(vertex_colors);
+          }
+        break;
+        }
+        case mesh_filetype::MESH_FILETYPE_VOX:
+        {
+        std::vector<uint32_t> vertex_colors;
+        if (!read_vox(filename.c_str(), m.vertices, vertex_colors, m.triangles))
           return false;
         if (!vertex_colors.empty())
           {

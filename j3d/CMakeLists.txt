@@ -48,6 +48,11 @@ set(TINYGLTF
 ${CMAKE_CURRENT_SOURCE_DIR}/../tinygltf/tiny_gltf.h
 )
 
+set(OGT
+${CMAKE_CURRENT_SOURCE_DIR}/../ogt/ogt_vox.h
+${CMAKE_CURRENT_SOURCE_DIR}/../ogt/ogt_voxel_meshify.h
+)
+
 
 set(HDRS
 canvas.h
@@ -66,6 +71,7 @@ scene.h
 settings.h
 trackball.h
 view.h
+vox.h
 )
 	
 set(SRCS
@@ -85,6 +91,7 @@ scene.cpp
 settings.cpp
 trackball.c
 view.cpp
+vox.cpp
 )
 
 set(RESOURCES
@@ -107,9 +114,9 @@ add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 include ("../jtk/jtk/jtk.cmake")
 
 if (WIN32)
-add_executable(j3d WIN32 ${HDRS} ${SRCS} ${RESOURCES} ${STB} ${IMGUI} ${JSON} ${TINYGLTF})
+add_executable(j3d WIN32 ${HDRS} ${SRCS} ${RESOURCES} ${STB} ${IMGUI} ${JSON} ${TINYGLTF} ${OGT})
 else (WIN32)
-add_executable(j3d ${HDRS} ${SRCS} ${RESOURCES} ${STB} ${IMGUI} ${JSON} ${TINYGLTF})
+add_executable(j3d ${HDRS} ${SRCS} ${RESOURCES} ${STB} ${IMGUI} ${JSON} ${TINYGLTF} ${OGT})
 endif (WIN32)
 
 source_group("Header Files" FILES ${HDRS})
@@ -118,6 +125,7 @@ source_group("stb" FILES ${STB})
 source_group("ImGui" FILES ${IMGUI})
 source_group("json" FILES ${JSON})
 source_group("tinygltf" FILES ${TINYGLTF})
+source_group("opengametools" FILES ${OGT})
 
 
 

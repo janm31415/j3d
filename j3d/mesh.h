@@ -16,7 +16,8 @@ enum class mesh_filetype
   MESH_FILETYPE_OFF,
   MESH_FILETYPE_OBJ,
   MESH_FILETYPE_GLTF,
-  MESH_FILETYPE_TRC
+  MESH_FILETYPE_TRC,
+  MESH_FILETYPE_VOX
   };
 
 struct mesh
