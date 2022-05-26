@@ -4,11 +4,11 @@
 #include "vox.h"
 #include "settings.h"
 
-#include <jtk/geometry.h>
+#include "jtk/geometry.h"
 
 #include <algorithm>
 
-#include <jtk/file_utils.h>
+#include "jtk/file_utils.h"
 
 #include <stb_image.h>
 
@@ -82,6 +82,8 @@ bool read_from_file(mesh& m, const std::string& filename)
 
   static std::vector<std::pair<std::string, mesh_filetype>> valid_extensions = get_valid_mesh_extensions();
 
+  std::wstring wfilename = jtk::convert_string_to_wstring(filename);
+
   for (const auto& valid_ext : valid_extensions)
     {
     if (valid_ext.first == ext)
@@ -90,9 +92,9 @@ bool read_from_file(mesh& m, const std::string& filename)
         {
         case mesh_filetype::MESH_FILETYPE_STL:
         {
-          if (!read_stl(m.vertices, m.triangles, filename.c_str()))
+          if (!read_stl(m.vertices, m.triangles, wfilename.c_str()))
             {
-            if (!read_stl_ascii(m.vertices, m.triangles, filename.c_str()))
+            if (!read_stl_ascii(m.vertices, m.triangles, wfilename.c_str()))
               return false;
             }
           break;
@@ -101,7 +103,7 @@ bool read_from_file(mesh& m, const std::string& filename)
         {
         std::vector<jtk::vec3<float>> vertex_normals;
         std::vector<uint32_t> vertex_colors;
-        if (!read_ply(filename.c_str(), m.vertices, vertex_normals, vertex_colors, m.triangles, m.uv_coordinates))
+        if (!read_ply(wfilename.c_str(), m.vertices, vertex_normals, vertex_colors, m.triangles, m.uv_coordinates))
           return false;
         if (!vertex_colors.empty())
           {
@@ -111,7 +113,7 @@ bool read_from_file(mesh& m, const std::string& filename)
         }
         case mesh_filetype::MESH_FILETYPE_OFF:
         {
-        if (!read_off(m.vertices, m.triangles, filename.c_str()))
+        if (!read_off(m.vertices, m.triangles, wfilename.c_str()))
           return false;
         break;
         }
@@ -119,7 +121,7 @@ bool read_from_file(mesh& m, const std::string& filename)
         {
         std::vector<jtk::vec3<float>> vertex_normals;
         std::vector<uint32_t> vertex_colors;
-        if (!read_obj(filename.c_str(), m.vertices, vertex_normals, vertex_colors, m.triangles, m.uv_coordinates, m.texture))
+        if (!read_obj(wfilename.c_str(), m.vertices, vertex_normals, vertex_colors, m.triangles, m.uv_coordinates, m.texture))
           return false;
         if (!vertex_colors.empty())
           {
@@ -131,7 +133,7 @@ bool read_from_file(mesh& m, const std::string& filename)
         {
         std::vector<jtk::vec3<float>> vertex_normals;
         std::vector<uint32_t> vertex_colors;
-        if (!read_trc(filename.c_str(), m.vertices, vertex_normals, vertex_colors, m.triangles, m.uv_coordinates))
+        if (!read_trc(wfilename.c_str(), m.vertices, vertex_normals, vertex_colors, m.triangles, m.uv_coordinates))
           return false;
         if (!vertex_colors.empty())
           {
