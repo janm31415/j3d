@@ -285,12 +285,12 @@ int64_t view::load_file(const char* filename)
     id = load_pc_from_file(filename);
   else
     {
-    if (get_triangles(_db, id)->empty()) // mesh without triangles? -> point cloud
+    if (get_triangles(_db, (uint32_t)id)->empty()) // mesh without triangles? -> point cloud
       {
           {
           std::scoped_lock lock(_mut);
-          remove_object(id, _scene);
-          _db.delete_object_hard(id);
+          remove_object((uint32_t)id, _scene);
+          _db.delete_object_hard((uint32_t)id);
           }
           id = load_pc_from_file(filename);
       }
@@ -310,11 +310,11 @@ void view::save_mesh_to_file(int64_t id, const char* filename)
   if (m && file_has_known_mesh_extension(filename))
     {
     std::string fn(filename);
-    if (write_to_file(*m, fn))
+    if (write_to_file(*m, fn, _settings))
       {
       ::update_current_folder(_settings, filename);
-      std::string window_title = "j3d - " + std::string(filename);
-      SDL_SetWindowTitle(this->_window, window_title.c_str());
+      //std::string window_title = "j3d - " + std::string(filename);
+      //SDL_SetWindowTitle(this->_window, window_title.c_str());
       }
     }
   }
@@ -466,7 +466,7 @@ void view::_load_next_file_in_folder(int32_t step_size)
   if (_settings._current_folder_files.empty())
     return;
   while (step_size < 0)
-    step_size += _settings._current_folder_files.size();
+    step_size += (int32_t)_settings._current_folder_files.size();
   int32_t current_index = _settings._index_in_folder;
   _settings._index_in_folder = (_settings._index_in_folder + step_size) % _settings._current_folder_files.size();
   while (current_index != _settings._index_in_folder)
@@ -475,7 +475,7 @@ void view::_load_next_file_in_folder(int32_t step_size)
     if (file_has_known_extension(file_to_check.c_str()))
       {
       clear_scene();
-      int32_t id = load_file(file_to_check.c_str());
+      load_file(file_to_check.c_str());
       _refresh = true;
       //if (id >= 0)
       //  {
@@ -1113,6 +1113,15 @@ void view::imgui_ui()
           _settings._background = 0xff000000 | (uint32_t(49) << 16) | (uint32_t(49) << 8) | uint32_t(49);
           _canvas.set_background_color(_settings._gradient_top, _settings._gradient_bottom);
           _refresh = true;
+          }
+        ImGui::EndMenu();
+        }
+      if (ImGui::BeginMenu("Vox"))
+        {
+        int sz = (int)_settings._vox_max_size;
+        if (ImGui::SliderInt("max dimension size", &sz, 1, 1000))
+          {
+          _settings._vox_max_size = (uint32_t)sz;
           }
         ImGui::EndMenu();
         }

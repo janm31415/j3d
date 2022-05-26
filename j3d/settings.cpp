@@ -13,6 +13,7 @@ settings::settings()
   _canvas_settings.vertexcolors = true;
   _canvas_w = 800;
   _canvas_h = 600;
+  _vox_max_size = 100;
   _executable_path = jtk::get_executable_path();
   _index_in_folder = -1;
   _matcap_type = matcap_type::MATCAP_TYPE_INTERNAL_REDWAX;
@@ -37,6 +38,7 @@ settings read_settings(const char* filename)
   f["current_folder"] >> s._current_folder;
   f["canvas_w"] >> s._canvas_w;
   f["canvas_h"] >> s._canvas_h;
+  f["vox_max_size"] >> s._vox_max_size;
   int32_t i;
   f["matcap_type"] >> i;
   s._matcap_type = int_to_matcap_type(i);
@@ -62,6 +64,7 @@ void write_settings(const settings& s, const char* filename)
   f << "current_folder" << s._current_folder;
   f << "canvas_w" << s._canvas_w;
   f << "canvas_h" << s._canvas_h;
+  f << "vox_max_size" << s._vox_max_size;
   f << "matcap_type" << matcap_type_to_int(s._matcap_type);
   f << "matcap_file" << s._matcap_file;
   f << "gradient_top" << s._gradient_top;

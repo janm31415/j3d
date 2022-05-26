@@ -7,6 +7,7 @@
 #include "mesh.h"
 #include "jtk/concurrency.h"
 #include "jtk/qbvh.h"
+#include "jtk/file_utils.h"
 
 namespace
   {
@@ -385,7 +386,7 @@ bool write_vox(const char* filename,
   instance.hidden = false;
   instance.layer_index = 0;   // default_layer
   instance.model_index = 0;
-  instance.name = filename;
+  instance.name = "default";
   instance.transform = identity_transform;
   instance.transform_anim.keyframes = nullptr;
   instance.transform_anim.num_keyframes = 0;

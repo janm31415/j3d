@@ -2,6 +2,7 @@
 #include "io.h"
 #include "gltf.h"
 #include "vox.h"
+#include "settings.h"
 
 #include <jtk/geometry.h>
 
@@ -233,7 +234,7 @@ std::vector<jtk::vec3<float>> convert_vertex_colors(const std::vector<uint32_t>&
   return out;
   }
 
-bool write_to_file(const mesh& m, const std::string& filename)
+bool write_to_file(const mesh& m, const std::string& filename, const settings& sett)
   {
   std::string ext = jtk::get_extension(filename);
   if (ext.empty())
@@ -273,7 +274,7 @@ bool write_to_file(const mesh& m, const std::string& filename)
     }
   else if (ext == "vox")
     {
-    return write_vox(filename.c_str(), m.vertices, m.vertex_colors, m.triangles, m.uv_coordinates, m.texture);
+    return write_vox(filename.c_str(), m.vertices, m.vertex_colors, m.triangles, m.uv_coordinates, m.texture, sett._vox_max_size);
     }
   return false;
   }

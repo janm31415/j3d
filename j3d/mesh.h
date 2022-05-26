@@ -9,6 +9,8 @@
 #include <memory>
 #include <string>
 
+struct settings;
+
 enum class mesh_filetype
   {
   MESH_FILETYPE_STL,
@@ -43,7 +45,7 @@ bool read_from_file(mesh& m, const std::string& filename);
 bool vertices_to_csv(const mesh& m, const std::string& filename);
 bool triangles_to_csv(const mesh& m, const std::string& filename);
 
-bool write_to_file(const mesh& m, const std::string& filename);
+bool write_to_file(const mesh& m, const std::string& filename, const settings& sett);
 
 void info(const mesh& m);
 
