@@ -156,7 +156,7 @@ bool read_from_file(mesh& m, const std::string& filename)
         case mesh_filetype::MESH_FILETYPE_VOX:
         {
         std::vector<uint32_t> vertex_colors;
-        if (!read_vox(filename.c_str(), m.vertices, vertex_colors, m.triangles))
+        if (!read_vox(wfilename.c_str(), m.vertices, vertex_colors, m.triangles))
           return false;
         if (!vertex_colors.empty())
           {
@@ -242,25 +242,26 @@ bool write_to_file(const mesh& m, const std::string& filename, const settings& s
   if (ext.empty())
     return false;
   std::transform(ext.begin(), ext.end(), ext.begin(), [](char ch) {return (char)::tolower(ch); });
+  std::wstring wfilename = jtk::convert_string_to_wstring(filename);
   if (ext == "stl")
     {
-    return jtk::write_stl(m.vertices.data(), (uint32_t)m.triangles.size(), m.triangles.data(), nullptr, nullptr, filename.c_str());
+    return jtk::write_stl(m.vertices.data(), (uint32_t)m.triangles.size(), m.triangles.data(), nullptr, nullptr, wfilename.c_str());
     }
   else if (ext == "ply")
     {
     std::vector<uint32_t> colors = convert_vertex_colors(m.vertex_colors);
     std::vector<jtk::vec3<float>> normals;
-    return write_ply(filename.c_str(), m.vertices, normals, colors, m.triangles, m.uv_coordinates);
+    return write_ply(wfilename.c_str(), m.vertices, normals, colors, m.triangles, m.uv_coordinates);
     }
   else if (ext == "off")
     {
-    return jtk::write_off((uint32_t)m.vertices.size(), m.vertices.data(), (uint32_t)m.triangles.size(), m.triangles.data(), filename.c_str());
+    return jtk::write_off((uint32_t)m.vertices.size(), m.vertices.data(), (uint32_t)m.triangles.size(), m.triangles.data(), wfilename.c_str());
     }
   else if (ext == "obj")
     {
     std::vector<uint32_t> colors = convert_vertex_colors(m.vertex_colors);
     std::vector<jtk::vec3<float>> normals;
-    return write_obj(filename.c_str(), m.vertices, normals, colors, m.triangles, m.uv_coordinates, m.texture);
+    return write_obj(wfilename.c_str(), m.vertices, normals, colors, m.triangles, m.uv_coordinates, m.texture);
     }
   else if (ext == "glb")
     {
@@ -276,7 +277,7 @@ bool write_to_file(const mesh& m, const std::string& filename, const settings& s
     }
   else if (ext == "vox")
     {
-    return write_vox(filename.c_str(), m.vertices, m.vertex_colors, m.triangles, m.uv_coordinates, m.texture, sett._vox_max_size);
+    return write_vox(wfilename.c_str(), m.vertices, m.vertex_colors, m.triangles, m.uv_coordinates, m.texture, sett._vox_max_size);
     }
   return false;
   }

@@ -18,7 +18,14 @@ namespace
     public:
       FILE* operator()(const TCHAR* filename, const char* mode)
         {
-        return fopen(filename, mode);
+#if defined(_MSC_VER) && _MSC_VER >= 1400
+        FILE* fp;
+        if (0 != fopen_s(&fp, filename, mode))
+          fp = 0;
+#else
+        FILE* fp = fopen(filename, mode);
+#endif
+        return fp;
         }
     };
 
@@ -30,7 +37,14 @@ namespace
         {
         std::string m(mode);
         std::wstring wm(m.begin(), m.end());
-        return _wfopen(filename, wm.c_str());
+#if defined(_MSC_VER) && _MSC_VER >= 1400
+        FILE* fp;
+        if (0 != _wfopen_s(&fp, filename, wm.c_str()))
+          fp = 0;
+#else
+        FILE* fp = _wfopen(filename, wm.c_str());
+#endif
+        return fp;
         }
     };
 

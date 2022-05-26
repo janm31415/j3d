@@ -329,8 +329,8 @@ void view::save_pc_to_file(int64_t id, const char* filename)
     if (write_to_file(*p, fn))
       {
       ::update_current_folder(_settings, filename);
-      std::string window_title = "j3d - " + std::string(filename);
-      SDL_SetWindowTitle(this->_window, window_title.c_str());
+      //std::string window_title = "j3d - " + std::string(filename);
+      //SDL_SetWindowTitle(this->_window, window_title.c_str());
       }
     }
   }
