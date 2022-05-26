@@ -295,14 +295,21 @@ namespace
         }
       if (buffer[first_non_whitespace_index + 0] == 'v' && buffer[first_non_whitespace_index + 1] == ' ')
         {
-        float x, y, z;
-        auto err = sscanf(buffer + first_non_whitespace_index, "v %f %f %f\n", &x, &y, &z);
-        if (err != 3)
+        float x, y, z, r, g, b;
+        auto err = sscanf(buffer + first_non_whitespace_index, "v %f %f %f %f %f %f\n", &x, &y, &z, &r, &g, &b);
+        if (err != 3 && err != 6)
           {
           fclose(f);
           return false;
           }
         vertices.push_back(vec3<float>(x, y, z));
+        if (err == 6)
+          {
+          uint32_t red = (uint8_t)(r * 255.f);
+          uint32_t green = (uint8_t)(g * 255.f);
+          uint32_t blue = (uint8_t)(b * 255.f);
+          clrs.push_back(0xff000000 | (blue << 16) | (green << 8) | red);
+          }
         }
       else if (buffer[first_non_whitespace_index + 0] == 'v' && buffer[first_non_whitespace_index + 1] == 'n' && buffer[2] == ' ')
         {
@@ -497,7 +504,15 @@ namespace
         }
       for (size_t i = 0; i < vertices.size(); ++i)
         {
-        outputfile << "v " << vertices[i][0] << " " << vertices[i][1] << " " << vertices[i][2] << std::endl;
+        outputfile << "v " << vertices[i][0] << " " << vertices[i][1] << " " << vertices[i][2];
+        if (!clrs.empty())
+          {
+          float r = (clrs[i] & 255)/255.f;
+          float g = ((clrs[i]>>8) & 255) / 255.f;
+          float b = ((clrs[i]>>16) & 255) / 255.f;
+          outputfile << " " << r << " " << g << " " << b;
+          }
+        outputfile << std::endl;
         }
       for (size_t i = 0; i < normals.size(); ++i)
         {

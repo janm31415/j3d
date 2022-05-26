@@ -152,6 +152,8 @@ void view::prepare_window()
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
   ImGui::GetIO().IniFilename = nullptr;
+  //ImFontAtlas* p_atlas = ImGui::GetIO().Fonts;
+  //p_atlas->AddFontFromFileTTF("C:/_Dev/jedi/jedi/jedi/fonts/NotoMono-Regular.ttf", 17);
 
   // Setup Platform/Renderer bindings
   ImGui_ImplSDL2_InitForOpenGL(_window, gl_context);
