@@ -281,14 +281,21 @@ bool view::file_has_known_extension(const char* filename)
 int64_t view::load_file(const char* filename)
   {
 #ifdef _WIN32
-  std::wstring wfilename = jtk::convert_string_to_wstring(std::string(filename));
-  long length = GetShortPathName(wfilename.c_str(), NULL, 0);
-  wchar_t* buffer = new wchar_t[length];
-  length = GetShortPathName(wfilename.c_str(), buffer, length);
-  std::wstring wshortfilename(buffer);
-  std::string shortfilename = jtk::convert_wstring_to_string(wshortfilename);
-  int64_t id = load_mesh_from_file(shortfilename.c_str());
-  delete [] buffer;
+  std::string fn(filename);
+  std::wstring wfilename = jtk::convert_string_to_wstring(fn);
+  int64_t id = -1;
+  if (fn.size() != wfilename.size())
+    {
+    long length = GetShortPathName(wfilename.c_str(), NULL, 0);
+    wchar_t* buffer = new wchar_t[length];
+    length = GetShortPathName(wfilename.c_str(), buffer, length);
+    std::wstring wshortfilename(buffer);
+    std::string shortfilename = jtk::convert_wstring_to_string(wshortfilename);
+    id = load_mesh_from_file(shortfilename.c_str());
+    delete[] buffer;
+    }
+  else
+    id = load_mesh_from_file(filename);
 #else
   int64_t id = load_mesh_from_file(filename);
 #endif
@@ -837,13 +844,13 @@ void view::info()
   ImGui::InputScalar("#vertices", ImGuiDataType_U32, &nr_of_vertices, 0, 0, 0, ImGuiInputTextFlags_ReadOnly);
   uint32_t nr_of_triangles = (uint32_t)(m ? m->triangles.size() : 0);
   ImGui::InputScalar("#triangles", ImGuiDataType_U32, &nr_of_triangles, 0, 0, 0, ImGuiInputTextFlags_ReadOnly);
-  double fps = 1.0/_last_render_time_in_seconds;
+  double fps = 1.0 / _last_render_time_in_seconds;
   ImGui::InputScalar("fps", ImGuiDataType_Double, &fps, 0, 0, 0, ImGuiInputTextFlags_ReadOnly);
-  float minbb[3] = {_scene.min_bb[0], _scene.min_bb[1], _scene.min_bb[2]};
+  float minbb[3] = { _scene.min_bb[0], _scene.min_bb[1], _scene.min_bb[2] };
   ImGui::InputFloat3("min", minbb, "%.3f", ImGuiInputTextFlags_ReadOnly);
   float maxbb[3] = { _scene.max_bb[0], _scene.max_bb[1], _scene.max_bb[2] };
   ImGui::InputFloat3("max", maxbb, "%.3f", ImGuiInputTextFlags_ReadOnly);
-  float sizebb[3] = {maxbb[0]-minbb[0], maxbb[1] - minbb[1], maxbb[2] - minbb[2]};
+  float sizebb[3] = { maxbb[0] - minbb[0], maxbb[1] - minbb[1], maxbb[2] - minbb[2] };
   ImGui::InputFloat3("size", sizebb, "%.3f", ImGuiInputTextFlags_ReadOnly);
   ImGui::End();
   }
