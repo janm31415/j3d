@@ -4,7 +4,7 @@
 Introduction
 ------------
 
-j3d is a simple and straightforward application for visualizing 3d meshes and point clouds. The application uses software rendering so it can be used together with, for instance, Windows Remote Desktop without problems. Furthermore very large files can also be handled provided you have sufficient RAM. You need approximately 50 bytes of RAM per triangle (assuming no textures or vertex colors are present in the file). Thus, you need 15Gb of RAM to render a file with 300 million triangles.
+j3d is a simple and straightforward application for visualizing 3d meshes and point clouds. The application uses software rendering so it can be used together with, for instance, Windows Remote Desktop without problems. Furthermore very large files can also be handled provided you have sufficient RAM. You need approximately 39 bytes of RAM per triangle (assuming no textures or vertex colors are present in the file). Thus, you need 11.7Gb of RAM to render a file with 300 million triangles.
 
 ![](images/j3d_screenshot_1.png)
 
