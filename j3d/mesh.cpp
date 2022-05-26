@@ -271,6 +271,10 @@ bool write_to_file(const mesh& m, const std::string& filename)
     std::vector<jtk::vec3<float>> normals;
     return write_gltf(filename.c_str(), m.vertices, normals, colors, m.triangles, m.uv_coordinates, m.texture);
     }
+  else if (ext == "vox")
+    {
+    return write_vox(filename.c_str(), m.vertices, m.triangles);
+    }
   return false;
   }
 

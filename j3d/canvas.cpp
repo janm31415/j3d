@@ -1,7 +1,7 @@
 #include "canvas.h"
 
-#include <jtk/concurrency.h>
-#include <jtk/qbvh.h>
+#include "jtk/concurrency.h"
+#include "jtk/qbvh.h"
 
 #include "matcap.h"
 

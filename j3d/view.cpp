@@ -1142,7 +1142,7 @@ void view::imgui_ui()
     }
 
   static ImGuiFs::Dialog save_file_dlg(false, false, false);
-  const char* saveFileChosenPath = save_file_dlg.saveFileDialog(_saveFileDialog, _settings._current_folder.c_str(), nullptr, ".ply;.stl;.obj;.trc;.xyz;.pts;.glb;.gltf", "Save file as", ImVec2(-1, -1), ImVec2(50, 50));
+  const char* saveFileChosenPath = save_file_dlg.saveFileDialog(_saveFileDialog, _settings._current_folder.c_str(), nullptr, ".ply;.stl;.obj;.trc;.xyz;.pts;.glb;.gltf;.vox", "Save file as", ImVec2(-1, -1), ImVec2(50, 50));
   _saveFileDialog = false;
   if (strlen(saveFileChosenPath) > 0)
     {

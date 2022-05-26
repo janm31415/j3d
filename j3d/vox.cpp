@@ -4,6 +4,10 @@
 #define OGT_VOXEL_MESHIFY_IMPLEMENTATION
 #include "ogt/ogt_voxel_meshify.h"
 
+#include "mesh.h"
+#include "jtk/concurrency.h"
+#include "jtk/qbvh.h"
+
 namespace
   {
   // a helper function to load a magica voxel scene given a filename.
@@ -56,6 +60,39 @@ namespace
     result.y = (vec.x * transform.m01) + (vec.y * transform.m11) + (vec.z * transform.m21) + (1.0f * transform.m31);
     result.z = (vec.x * transform.m02) + (vec.y * transform.m12) + (vec.z * transform.m22) + (1.0f * transform.m32);
     return result;
+    }
+
+  // a helper function to save a magica voxel scene to disk.
+  void save_vox_scene(const char* pcFilename, const ogt_vox_scene* scene)
+    {
+    // save the scene back out. 
+    uint32_t buffersize = 0;
+    uint8_t* buffer = ogt_vox_write_scene(scene, &buffersize);
+    if (!buffer)
+      return;
+
+    // open the file for write
+#if defined(_MSC_VER) && _MSC_VER >= 1400
+    FILE* fp;
+    if (0 != fopen_s(&fp, pcFilename, "wb"))
+      fp = 0;
+#else
+    FILE* fp = fopen(pcFilename, "wb");
+#endif
+    if (!fp) {
+      ogt_vox_free(buffer);
+      return;
+      }
+
+    fwrite(buffer, buffersize, 1, fp);
+    fclose(fp);
+    ogt_vox_free(buffer);
+    }
+
+  void set_voxel(uint8_t* data, uint8_t value, uint32_t x, uint32_t y, uint32_t z, uint32_t* dim)
+    {
+    uint32_t idx = x + (y + z * dim[1]) * dim[0];
+    data[idx] = value;
     }
 
   }
@@ -142,9 +179,9 @@ bool read_vox(const char* filename, std::vector<jtk::vec3<float>>& vertices, std
       uint32_t red = mesh->vertices[i].color.r;
       uint32_t green = mesh->vertices[i].color.g;
       uint32_t blue = mesh->vertices[i].color.b;
-      clrs.push_back(0xff000000|(blue<<16)|(green<<8)|red);
+      clrs.push_back(0xff000000 | (blue << 16) | (green << 8) | red);
       }
-    triangles.reserve(triangles.size() + mesh->index_count/3);
+    triangles.reserve(triangles.size() + mesh->index_count / 3);
     for (size_t i = 0; i < mesh->index_count; i += 3)
       {
       uint32_t v_i0 = base_vertex_index + mesh->indices[i + 0];
@@ -157,5 +194,148 @@ bool read_vox(const char* filename, std::vector<jtk::vec3<float>>& vertices, std
     }
 
   ogt_vox_destroy_scene(p_scene);
+  return true;
+  }
+
+
+bool write_vox(const char* filename, const std::vector<jtk::vec3<float>>& vertices, const std::vector<jtk::vec3<uint32_t>>& triangles, uint32_t max_dim)
+  {
+  jtk::vec3<float> min_bb, max_bb;
+  compute_bb(min_bb, max_bb, (uint32_t)vertices.size(), vertices.data());
+  int largest_dim = 0;
+  if ((max_bb[1] - min_bb[1]) > (max_bb[largest_dim] - min_bb[largest_dim]))
+    largest_dim = 1;
+  if ((max_bb[2] - min_bb[2]) > (max_bb[largest_dim] - min_bb[largest_dim]))
+    largest_dim = 2;
+  
+  uint32_t dim[3] = { (uint32_t)(max_dim * (max_bb[0] - min_bb[0]) / (max_bb[largest_dim] - min_bb[largest_dim])),
+     (uint32_t)(max_dim * (max_bb[1] - min_bb[1]) / (max_bb[largest_dim] - min_bb[largest_dim])),
+     (uint32_t)(max_dim * (max_bb[2] - min_bb[2]) / (max_bb[largest_dim] - min_bb[largest_dim])) };
+  for (int j = 0; j < 3; ++j)
+    if (dim[j] == 0)
+      dim[j] = 1;
+
+  uint8_t* data = new uint8_t[dim[0] * dim[1] * dim[2]];
+  memset((void*)data, 0, dim[0] * dim[1] * dim[2]);
+
+  std::unique_ptr<jtk::qbvh> bvh = std::unique_ptr<jtk::qbvh>(new jtk::qbvh(triangles, vertices.data()));
+
+  for (int direction_dim = 0; direction_dim < 3; ++direction_dim)
+    {
+    jtk::float4 direction(1, 0, 0, 0);
+    if (direction_dim == 1)
+      direction = jtk::float4(0, 1, 0, 0);
+    else if (direction_dim == 2)
+      direction = jtk::float4(0, 0, 2, 0);
+    int dim1 = (direction_dim + 1) % 3;
+    int dim2 = (direction_dim + 2) % 3;
+    for (uint32_t d1 = 0; d1 < dim[dim1]; ++d1)
+      {
+      for (uint32_t d2 = 0; d2 < dim[dim2]; ++d2)
+        {
+        jtk::vec3<float> ray_start;
+        ray_start[direction_dim] = min_bb[direction_dim];
+        ray_start[dim1] = ((d1 + 0.5f) / (double)dim[dim1]) * (max_bb[dim1] - min_bb[dim1]) + min_bb[dim1];
+        ray_start[dim2] = ((d2 + 0.5f) / (double)dim[dim2]) * (max_bb[dim2] - min_bb[dim2]) + min_bb[dim2];
+        jtk::ray r;
+        r.orig = jtk::float4(ray_start[0], ray_start[1], ray_start[2], 1.f);
+        r.dir = direction;
+        r.t_near = 0.f;
+        r.t_far = std::numeric_limits<float>::max();
+        std::vector<uint32_t> triangle_ids;
+        std::vector<jtk::hit> all_hits = bvh->find_all_triangles(triangle_ids, r, triangles.data(), vertices.data());
+        for (size_t i = 0; i < all_hits.size(); ++i)
+          {
+          const auto& hit = all_hits[i];
+          const uint32_t v0 = triangles[triangle_ids[i]][0];
+          const uint32_t v1 = triangles[triangle_ids[i]][1];
+          const uint32_t v2 = triangles[triangle_ids[i]][2];
+          const auto pos = vertices[v0] * (1.f - hit.u - hit.v) + hit.u * vertices[v1] + hit.v * vertices[v2];
+          float x = (pos.x - min_bb[0]) / (max_bb[0] - min_bb[0]);
+          uint32_t X = (uint32_t)(x * dim[0]);
+          if (X == dim[0])
+            X = dim[0] - 1;
+          float y = (pos.y - min_bb[1]) / (max_bb[1] - min_bb[1]);
+          uint32_t Y = (uint32_t)(y * dim[1]);
+          if (Y == dim[1])
+            Y = dim[1] - 1;
+          float z = (pos.z - min_bb[2]) / (max_bb[2] - min_bb[2]);
+          uint32_t Z = (uint32_t)(z * dim[2]);
+          if (Z == dim[2])
+            Z = dim[2] - 1;
+          set_voxel(data, 255, X, Y, Z, dim);
+          }
+        }
+      }
+    }
+
+  ogt_vox_model* model = new ogt_vox_model;
+  model->size_x = dim[0];
+  model->size_y = dim[1];
+  model->size_z = dim[2];
+  model->voxel_data = data;
+
+  ogt_vox_palette palette;
+  for (int i = 0; i < 256; ++i)
+    {
+    palette.color[i].r = (uint8_t)i;
+    palette.color[i].g = (uint8_t)i;
+    palette.color[i].b = (uint8_t)i;
+    palette.color[i].a = 255;
+    }
+
+  ogt_vox_transform identity_transform = _vox_transform_identity();
+
+  ogt_vox_layer default_layer;
+  default_layer.hidden = false;
+  default_layer.name = "default";
+
+  ogt_vox_group default_group;
+  default_group.hidden = false;
+  default_group.layer_index = 0;
+  default_group.parent_group_index = k_invalid_group_index;
+  default_group.transform = identity_transform;
+  default_group.name = "default";
+  default_group.transform_anim.keyframes = nullptr;
+  default_group.transform_anim.num_keyframes = 0;
+  default_group.transform_anim.loop = false;
+
+  ogt_vox_instance instance;
+  instance.group_index = 0;   // default_group
+  instance.hidden = false;
+  instance.layer_index = 0;   // default_layer
+  instance.model_index = 0;
+  instance.name = filename;
+  instance.transform = identity_transform;
+  instance.transform_anim.keyframes = nullptr;
+  instance.transform_anim.num_keyframes = 0;
+  instance.transform_anim.loop = false;
+  instance.model_anim.keyframes = nullptr;
+  instance.model_anim.num_keyframes = 0;
+  instance.model_anim.loop = false;
+
+  ogt_vox_scene output_scene;
+  output_scene.groups = &default_group;
+  output_scene.num_groups = 1;
+  output_scene.instances = &instance;
+  output_scene.num_instances = 1;
+  output_scene.instances = &instance;
+  output_scene.num_layers = 1;
+  output_scene.layers = &default_layer;
+  output_scene.num_models = 1;
+  output_scene.models = &((const ogt_vox_model*)model);
+  output_scene.palette = palette;
+  output_scene.cameras = nullptr;
+  output_scene.num_cameras = 0;
+
+  ogt_vox_matl default_mat;
+  default_mat.content_flags = 0;
+
+  for (int i = 0; i < 256; ++i)
+    output_scene.materials.matl[i] = default_mat;
+  save_vox_scene(filename, &output_scene);
+
+  delete model;
+  delete[] data;
   return true;
   }
