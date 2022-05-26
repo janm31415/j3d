@@ -1,5 +1,5 @@
 # j3d
-3d viewer for ply, stl, obj.
+3d viewer for ply, stl, obj, vox. Also minor support for gltf and glb.
 
 Introduction
 ------------
