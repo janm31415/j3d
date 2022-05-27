@@ -26,15 +26,15 @@ File format comparisons
 
 The table below compares different file formats that are supported by j3d. We show the time necessary to load the file from disk, and the size that the file format takes on the disk. The comparison is done on a moderately large file, Lucy (see screenshot), from the [Stanford 3D Scanning Repository](http://graphics.stanford.edu/data/3Dscanrep/). This file contains 28 million triangles and 14 million vertices.
 
-File format | Load time | File size
------------ | --------- | ---------
-TRC | 0.9s | 268,039 KB
-PLY | 2.52s | 520,566 KB
-STL | 4.53s | 1,369,910 KB
-GLB | 5.6s | 547,965 KB
-GLTF | 12.5s | 657,558 KB
-OFF | 26.8s | 1,231,375 KB
-OBJ | 34s | 1,139,098 KB
+File format | Load time | File size | Reference
+----------- | --------- | --------- | ---------
+TRC | 0.9s | 268,039 KB | [trico](https://github.com/janm31415/trico)
+PLY | 2.52s | 520,566 KB | [wikipedia](https://en.wikipedia.org/wiki/PLY_(file_format))
+STL | 4.53s | 1,369,910 KB | [wikipedia](https://en.wikipedia.org/wiki/STL_(file_format))
+GLB | 5.6s | 547,965 KB | [wikipedia](https://en.wikipedia.org/wiki/GlTF)
+GLTF | 12.5s | 657,558 KB | [wikipedia](https://en.wikipedia.org/wiki/GlTF)
+OFF | 26.8s | 1,231,375 KB | [wikipedia](https://en.wikipedia.org/wiki/OFF_(file_format))
+OBJ | 34s | 1,139,098 KB | [wikipedia](https://en.wikipedia.org/wiki/Wavefront_.obj_file)
 
 Note that, apart from the disk loading time, j3d also spends time to construct a bounding volume hierarchy (bvh) for rendering. The time to generate a bvh for Lucy is about 3.6s.
 
