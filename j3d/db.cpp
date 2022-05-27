@@ -226,3 +226,18 @@ bool is_visible(const db& _db, uint32_t id)
     }
   return false;
   }
+
+double get_load_time_in_s(const db& _db, uint32_t id)
+  {
+  auto key = get_db_key(id);
+  switch (key)
+    {
+    case MESH_KEY:
+      return _db.get_mesh(id)->load_time_in_s;
+      break;
+    case PC_KEY:
+      return _db.get_pc(id)->load_time_in_s;
+      break;
+    }
+  return -1.0;
+  }

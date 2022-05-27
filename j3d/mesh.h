@@ -31,6 +31,8 @@ struct mesh
   jtk::image<uint32_t> texture;
   jtk::float4x4 cs;
   bool visible;
+  double load_time_in_s;
+  double acceleration_structure_construction_time_in_s;
   };
 
 std::vector<std::pair<std::string, mesh_filetype>> get_valid_mesh_extensions();

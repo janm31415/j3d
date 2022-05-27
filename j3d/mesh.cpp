@@ -253,6 +253,12 @@ bool write_to_file(const mesh& m, const std::string& filename, const settings& s
     std::vector<jtk::vec3<float>> normals;
     return write_ply(wfilename.c_str(), m.vertices, normals, colors, m.triangles, m.uv_coordinates);
     }
+  else if (ext == "trc")
+    {
+    std::vector<uint32_t> colors = convert_vertex_colors(m.vertex_colors);
+    std::vector<jtk::vec3<float>> normals;
+    return write_trc(wfilename.c_str(), m.vertices, normals, colors, m.triangles, m.uv_coordinates);
+    }
   else if (ext == "off")
     {
     return jtk::write_off((uint32_t)m.vertices.size(), m.vertices.data(), (uint32_t)m.triangles.size(), m.triangles.data(), wfilename.c_str());

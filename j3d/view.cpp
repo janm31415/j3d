@@ -15,6 +15,7 @@
 #include <SDL_syswm.h>
 
 #include "jtk/geometry.h"
+#include "jtk/timer.h"
 
 #include "stb/stb_image_write.h"
 
@@ -197,12 +198,16 @@ int64_t view::load_mesh_from_file(const char* filename)
   std::scoped_lock lock(_mut);
   mesh m;
   std::string f(filename);
+  jtk::timer t;
+  t.start();
   bool res = read_from_file(m, f);
   if (!res)
     return -1;
+  double load_time_in_s = t.time_elapsed();
   mesh* db_mesh;
   uint32_t id;
   _db.create_mesh(db_mesh, id);
+  db_mesh->load_time_in_s = load_time_in_s;
   db_mesh->vertices.swap(m.vertices);
   db_mesh->triangles.swap(m.triangles);
   db_mesh->uv_coordinates.swap(m.uv_coordinates);
@@ -211,7 +216,11 @@ int64_t view::load_mesh_from_file(const char* filename)
   db_mesh->cs = m.cs;
   db_mesh->visible = m.visible;
   if (db_mesh->visible)
+    {
+    t.start();
     add_object(id, _scene, _db);
+    db_mesh->acceleration_structure_construction_time_in_s = t.time_elapsed();
+    }
   prepare_scene(_scene);
   ::unzoom(_scene);
   _refresh = true;
@@ -223,13 +232,17 @@ int64_t view::load_pc_from_file(const char* filename)
   std::scoped_lock lock(_mut);
   pc point_cloud;
   std::string f(filename);
+  jtk::timer t;
+  t.start();
   bool res = read_from_file(point_cloud, f);
   if (!res)
     return -1;
+  double load_time_in_s = t.time_elapsed();
   pc* db_pc;
   uint32_t id;
   _db.create_pc(db_pc, id);
   db_pc->vertices.swap(point_cloud.vertices);
+  db_pc->load_time_in_s = load_time_in_s;
   db_pc->normals.swap(point_cloud.normals);
   db_pc->vertex_colors.swap(point_cloud.vertex_colors);
   db_pc->cs = point_cloud.cs;
@@ -818,7 +831,7 @@ void view::info()
   if (!m && !p)
     return;
 
-  ImGui::SetNextWindowSize(ImVec2(312, 400), ImGuiCond_FirstUseEver);
+  ImGui::SetNextWindowSize(ImVec2(500, 300), ImGuiCond_FirstUseEver);
   ImGui::SetNextWindowPos(ImVec2(14, 50), ImGuiCond_FirstUseEver);
   if (!ImGui::Begin("Info", &_showInfo))
     {
@@ -837,6 +850,13 @@ void view::info()
   ImGui::InputFloat3("max", maxbb, "%.3f", ImGuiInputTextFlags_ReadOnly);
   float sizebb[3] = { maxbb[0] - minbb[0], maxbb[1] - minbb[1], maxbb[2] - minbb[2] };
   ImGui::InputFloat3("size", sizebb, "%.3f", ImGuiInputTextFlags_ReadOnly);
+  float lt = (float)((m ? m->load_time_in_s : p->load_time_in_s));
+  ImGui::InputFloat("file load time (s)", &lt, 0.f, 0.f, "%.6f", ImGuiInputTextFlags_ReadOnly);
+  if (m)
+    {
+    float accelt = m->acceleration_structure_construction_time_in_s;
+    ImGui::InputFloat("bvh construction (s)", &accelt, 0.f, 0.f, "%.6f", ImGuiInputTextFlags_ReadOnly);
+    }
   ImGui::End();
   }
 
@@ -1154,7 +1174,7 @@ void view::imgui_ui()
     }
 
   static ImGuiFs::Dialog save_file_dlg(false, false, false);
-  const char* saveFileChosenPath = save_file_dlg.saveFileDialog(_saveFileDialog, _settings._current_folder.c_str(), nullptr, ".ply;.stl;.obj;.trc;.xyz;.pts;.glb;.gltf;.vox", "Save file as", ImVec2(-1, -1), ImVec2(50, 50));
+  const char* saveFileChosenPath = save_file_dlg.saveFileDialog(_saveFileDialog, _settings._current_folder.c_str(), nullptr, ".ply;.stl;.obj;.trc;.xyz;.pts;.glb;.gltf;.vox;.off", "Save file as", ImVec2(-1, -1), ImVec2(50, 50));
   _saveFileDialog = false;
   if (strlen(saveFileChosenPath) > 0)
     {

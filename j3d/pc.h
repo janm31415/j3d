@@ -26,6 +26,7 @@ struct pc
   std::vector<uint32_t> vertex_colors;  
   jtk::float4x4 cs;
   bool visible;
+  double load_time_in_s;
   };
 
 bool read_from_file(pc& point_cloud, const std::string& filename);
