@@ -37,8 +37,11 @@ bool read_from_file(pc& point_cloud, const std::string& filename)
 
   static std::vector<std::pair<std::string, pc_filetype>> valid_extensions = get_valid_pc_extensions();
 
+#ifdef _WIN32
   std::wstring wfilename = jtk::convert_string_to_wstring(filename);
-
+#else
+  std::string wfilename = filename;
+#endif
   for (const auto& valid_ext : valid_extensions)
     {
     if (valid_ext.first == ext)
@@ -123,7 +126,11 @@ bool write_to_file(const pc& p, const std::string& filename)
   std::string ext = jtk::get_extension(filename);
   if (ext.empty())
     return false;
+  #ifdef _WIN32
   std::wstring wfilename = jtk::convert_string_to_wstring(filename);
+  #else
+  std::string wfilename = filename;
+  #endif
   if (ext == "ply")
     {
     std::vector<jtk::vec3<uint32_t>> triangles;

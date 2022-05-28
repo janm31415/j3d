@@ -41,8 +41,10 @@ namespace
         FILE* fp;
         if (0 != _wfopen_s(&fp, filename, wm.c_str()))
           fp = 0;
+#elif defined(_WIN32)
+          FILE* fp = _wfopen(filename, wm.c_str());
 #else
-        FILE* fp = _wfopen(filename, wm.c_str());
+          FILE* fp = nullptr; // use utf8 char
 #endif
         return fp;
         }
@@ -706,7 +708,7 @@ bool write_ply(const char* filename, const std::vector<jtk::vec3<float>>& vertic
   {
   return jtk::write_ply(filename, vertices, normals, clrs, triangles, uv);
   }
-
+#ifdef _WIN32
 bool read_ply(const wchar_t* filename, std::vector<jtk::vec3<float>>& vertices, std::vector<jtk::vec3<float>>& normals, std::vector<uint32_t>& clrs, std::vector<jtk::vec3<uint32_t>>& triangles, std::vector<jtk::vec3<jtk::vec2<float>>>& uv)
   {
   return jtk::read_ply(filename, vertices, normals, clrs, triangles, uv);
@@ -716,7 +718,7 @@ bool write_ply(const wchar_t* filename, const std::vector<jtk::vec3<float>>& ver
   {
   return jtk::write_ply(filename, vertices, normals, clrs, triangles, uv);
   }
-
+#endif
 bool read_trc(const char* filename, std::vector<jtk::vec3<float>>& vertices, std::vector<jtk::vec3<float>>& normals, std::vector<uint32_t>& clrs, std::vector<jtk::vec3<uint32_t>>& triangles, std::vector<jtk::vec3<jtk::vec2<float>>>& uv)
   {
   return _read_trc<char>(filename, vertices, normals, clrs, triangles, uv);
@@ -759,7 +761,7 @@ bool write_xyz(const char* filename, const std::vector<jtk::vec3<float>>& vertic
   return _write_xyz<char>(filename, vertices);
   }
 
-
+#ifdef _WIN32
 bool read_trc(const wchar_t* filename, std::vector<jtk::vec3<float>>& vertices, std::vector<jtk::vec3<float>>& normals, std::vector<uint32_t>& clrs, std::vector<jtk::vec3<uint32_t>>& triangles, std::vector<jtk::vec3<jtk::vec2<float>>>& uv)
   {
   return _read_trc<wchar_t>(filename, vertices, normals, clrs, triangles, uv);
@@ -803,3 +805,4 @@ bool write_xyz(const wchar_t* filename, const std::vector<jtk::vec3<float>>& ver
   {
   return _write_xyz<wchar_t>(filename, vertices);
   }
+#endif

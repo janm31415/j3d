@@ -40,8 +40,10 @@ namespace
         FILE* fp;
         if (0 != _wfopen_s(&fp, filename, wm.c_str()))
           fp = 0;
-#else
+#elif defined(_WIN32)
         FILE* fp = _wfopen(filename, wm.c_str());
+#else
+        FILE* fp = nullptr; // use char
 #endif
         return fp;
         }
@@ -422,6 +424,9 @@ namespace
     instance.model_anim.num_keyframes = 0;
     instance.model_anim.loop = false;
 
+    const ogt_vox_model* ptr_to_const_model = model;
+    const ogt_vox_model** ptr_to_model = &ptr_to_const_model;
+
     ogt_vox_scene output_scene;
     output_scene.groups = &default_group;
     output_scene.num_groups = 1;
@@ -431,7 +436,7 @@ namespace
     output_scene.num_layers = 1;
     output_scene.layers = &default_layer;
     output_scene.num_models = 1;
-    output_scene.models = &((const ogt_vox_model*)model);
+    output_scene.models = ptr_to_model;
     output_scene.palette = palette;
     output_scene.cameras = nullptr;
     output_scene.num_cameras = 0;
@@ -463,10 +468,22 @@ bool write_vox(const char* filename, const std::vector<jtk::vec3<float>>& vertic
 
 bool read_vox(const wchar_t* filename, std::vector<jtk::vec3<float>>& vertices, std::vector<uint32_t>& clrs, std::vector<jtk::vec3<uint32_t>>& triangles)
   {
+  #ifdef _WIN32
   return _read_vox<wchar_t>(filename, vertices, clrs, triangles);
+  #else
+  std::wstring wfn(filename);
+  std::string fn = jtk::convert_wstring_to_string(wfn);
+  return _read_vox<char>(fn.c_str(), vertices, clrs, triangles);
+  #endif
   }
 
 bool write_vox(const wchar_t* filename, const std::vector<jtk::vec3<float>>& vertices, const std::vector<jtk::vec3<float>>& clrs, const std::vector<jtk::vec3<uint32_t>>& triangles, const std::vector<jtk::vec3<jtk::vec2<float>>>& uv, const jtk::image<uint32_t>& texture, uint32_t max_dim)
   {
+  #ifdef _WIN32
   return _write_vox<wchar_t>(filename, vertices, clrs, triangles, uv, texture, max_dim);
+  #else
+  std::wstring wfn(filename);
+  std::string fn = jtk::convert_wstring_to_string(wfn);
+  return _write_vox<char>(fn.c_str(), vertices, clrs, triangles, uv, texture, max_dim);
+  #endif
   }

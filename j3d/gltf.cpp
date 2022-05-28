@@ -11,6 +11,7 @@
 #include "stb/stb_image_write.h"
 
 #include <string>
+#include <limits>
 
 namespace
   {
@@ -668,8 +669,8 @@ namespace
 
   struct gltf_bbox
     {
-    jtk::vec3<float> min{ FLT_MAX, FLT_MAX, FLT_MAX };
-    jtk::vec3<float> max{ -FLT_MAX, -FLT_MAX, -FLT_MAX };
+    jtk::vec3<float> min{ std::numeric_limits<float>::max(), std::numeric_limits<float>::max(),std::numeric_limits<float>::max() };
+    jtk::vec3<float> max{ -std::numeric_limits<float>::max(), -std::numeric_limits<float>::max(),-std::numeric_limits<float>::max() };
     };
 
   gltf_bbox calculate_bounding_box(const std::vector<jtk::vec3<float>>& v)

@@ -82,8 +82,11 @@ bool read_from_file(mesh& m, const std::string& filename)
 
   static std::vector<std::pair<std::string, mesh_filetype>> valid_extensions = get_valid_mesh_extensions();
 
+#ifdef _WIN32
   std::wstring wfilename = jtk::convert_string_to_wstring(filename);
-
+#else
+  std::string wfilename = filename;
+#endif
   for (const auto& valid_ext : valid_extensions)
     {
     if (valid_ext.first == ext)
@@ -242,7 +245,11 @@ bool write_to_file(const mesh& m, const std::string& filename, const settings& s
   if (ext.empty())
     return false;
   std::transform(ext.begin(), ext.end(), ext.begin(), [](char ch) {return (char)::tolower(ch); });
+  #ifdef _WIN32
   std::wstring wfilename = jtk::convert_string_to_wstring(filename);
+  #else
+  std::string wfilename = filename;
+  #endif
   if (ext == "stl")
     {
     return jtk::write_stl(m.vertices.data(), (uint32_t)m.triangles.size(), m.triangles.data(), nullptr, nullptr, wfilename.c_str());
