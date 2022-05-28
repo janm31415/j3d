@@ -58,7 +58,7 @@ We saved this file as a .vox file, which is the MagicaVoxel file format (https:/
 
 ![](images/j3d_screenshot_skull_vox.png)
 
-The generated .vox file can be loaded in MagicaVoxel.
+The generated .vox file can be loaded in [MagicaVoxel](https://ephtracy.github.io/).
 
 ![](images/j3d_magicka_voxel.png)
 
