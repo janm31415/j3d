@@ -24,7 +24,7 @@ If you build for a Mac M1 with ARM processor, then set the CMake variables JTK_T
 File format comparisons
 -----------------------
 
-The table below compares different file formats that are supported by j3d. We show the time necessary to load the file from disk, and the size that the file format takes on the disk. The comparison is done on a moderately large file, Lucy (see screenshot), from the [Stanford 3D Scanning Repository](http://graphics.stanford.edu/data/3Dscanrep/). This file contains 28 million triangles and 14 million vertices.
+The table below compares different file formats that are supported by j3d. We show the time necessary to load the file from disk, and the size that the file format takes on the disk. The comparison is done on a moderately large file, Lucy (see screenshot), from the [Stanford 3D Scanning Repository](http://graphics.stanford.edu/data/3Dscanrep/). This file contains 28 million triangles and 14 million vertices. The file formats TRC, PLY, STL, and GLB are binary file formats. The file formats GLTF, OFF, OBJ are human readable file formats.
 
 File format | Load time | File size | Reference
 ----------- | --------- | --------- | ---------
