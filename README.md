@@ -1,5 +1,5 @@
 # j3d
-3d viewer for ply, stl, obj, vox. Also minor support for gltf and glb.
+3d viewer for ply, stl, obj, vox, off. Also minor support for gltf and glb (geometry is loaded, but not all textures and materials will be loaded).
 
 Introduction
 ------------
