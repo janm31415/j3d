@@ -120,7 +120,7 @@ endif (WIN32)
 
 if (UNIX)
   if (APPLE)
-    set(MACOSX_BUNDLE_ICON_FILE jedi.icns )
+    set(MACOSX_BUNDLE_ICON_FILE j3d.icns )
     set(APP_ICON_MACOSX ${CMAKE_CURRENT_SOURCE_DIR}/j3d.icns)
     set_source_files_properties(${APP_ICON_MACOSX} PROPERTIES
            MACOSX_PACKAGE_LOCATION "Resources")    
