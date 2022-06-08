@@ -757,6 +757,14 @@ void view::poll_for_events()
         _refresh = true;
         }
       }
+    if (event.type == SDL_DROPFILE)
+      {
+      auto dropped_filedir = event.drop.file;
+      std::string path(dropped_filedir);
+      SDL_free(dropped_filedir);    // Free dropped_filedir memory
+      clear_scene();
+      load_file(path.c_str());
+      }
     }
   }
 
