@@ -75,7 +75,6 @@ vox.h
 )
 	
 set(SRCS
-j3d.rc
 camera.cpp
 canvas.cpp
 db.cpp
@@ -95,6 +94,7 @@ vox.cpp
 )
 
 set(RESOURCES
+j3d.rc
 j3d.ico
 )
 
@@ -116,9 +116,22 @@ include ("../jtk/jtk/jtk.cmake")
 
 if (WIN32)
 add_executable(j3d WIN32 ${HDRS} ${SRCS} ${RESOURCES} ${STB} ${IMGUI} ${JSON} ${TINYGLTF} ${OGT})
-else (WIN32)
-add_executable(j3d ${HDRS} ${SRCS} ${RESOURCES} ${STB} ${IMGUI} ${JSON} ${TINYGLTF} ${OGT})
 endif (WIN32)
+
+if (UNIX)
+  if (APPLE)
+    set(MACOSX_BUNDLE_ICON_FILE jedi.icns )
+    set(APP_ICON_MACOSX ${CMAKE_CURRENT_SOURCE_DIR}/j3d.icns)
+    set_source_files_properties(${APP_ICON_MACOSX} PROPERTIES
+           MACOSX_PACKAGE_LOCATION "Resources")    
+    set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED "NO")
+    set(CMAKE_XCODE_ATTRIBUTE_OTHER_CODE_SIGN_FLAGS "--deep" CACHE STRING "Other Code Signing Flags" FORCE)
+    add_executable(j3d MACOSX_BUNDLE ${HDRS} ${SRCS} ${STB} ${IMGUI} ${JSON} ${TINYGLTF} ${OGT} ${APP_ICON_MACOSX})
+  else (APPLE)
+    add_executable(j3d ${HDRS} ${SRCS} ${STB} ${IMGUI} ${JSON} ${TINYGLTF} ${OGT})
+  endif (APPLE)
+endif (UNIX)
+
 
 source_group("Header Files" FILES ${HDRS})
 source_group("Source Files" FILES ${SRCS})
