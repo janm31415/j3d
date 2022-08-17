@@ -116,8 +116,15 @@ bool read_from_file(mesh& m, const std::string& filename)
         }
         case mesh_filetype::MESH_FILETYPE_OFF:
         {
-        if (!read_off(m.vertices, m.triangles, wfilename.c_str()))
+        std::vector<uint32_t> vertex_colors;
+        if (!read_off(m.vertices, m.triangles, vertex_colors, wfilename.c_str()))
           return false;
+        if (m.triangles.empty())
+          return false;
+        if (!vertex_colors.empty())
+          {
+          m.vertex_colors = convert_vertex_colors(vertex_colors);
+          }
         break;
         }
         case mesh_filetype::MESH_FILETYPE_OBJ:
@@ -268,7 +275,11 @@ bool write_to_file(const mesh& m, const std::string& filename, const settings& s
     }
   else if (ext == "off")
     {
-    return jtk::write_off((uint32_t)m.vertices.size(), m.vertices.data(), (uint32_t)m.triangles.size(), m.triangles.data(), wfilename.c_str());
+    std::vector<uint32_t> colors = convert_vertex_colors(m.vertex_colors);
+    if (colors.empty())
+      return jtk::write_off((uint32_t)m.vertices.size(), m.vertices.data(), (uint32_t)m.triangles.size(), m.triangles.data(), wfilename.c_str());
+    else
+      return jtk::write_off((uint32_t)m.vertices.size(), m.vertices.data(), colors.data(), (uint32_t)m.triangles.size(), m.triangles.data(), wfilename.c_str());
     }
   else if (ext == "obj")
     {

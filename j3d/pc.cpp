@@ -24,6 +24,7 @@ std::vector<std::pair<std::string, pc_filetype>> get_valid_pc_extensions()
   extensions.emplace_back(std::string("pts"), pc_filetype::PC_FILETYPE_PTS);
   extensions.emplace_back(std::string("xyz"), pc_filetype::PC_FILETYPE_XYZ);
   extensions.emplace_back(std::string("trc"), pc_filetype::PC_FILETYPE_TRC);
+  extensions.emplace_back(std::string("off"), pc_filetype::PC_FILETYPE_OFF);
 
   return extensions;
   }
@@ -96,6 +97,15 @@ bool read_from_file(pc& point_cloud, const std::string& filename)
           return false;
         break;
         }
+        case pc_filetype::PC_FILETYPE_OFF:
+        {
+        std::vector<jtk::vec3<uint32_t>> triangles;
+        if (!read_off(point_cloud.vertices, triangles, point_cloud.vertex_colors, wfilename.c_str()))
+          return false;
+        if (point_cloud.vertices.empty())
+          return false;
+        break;
+        }
         }
 
       point_cloud.cs = get_identity();
@@ -158,6 +168,11 @@ bool write_to_file(const pc& p, const std::string& filename)
     std::vector<jtk::vec3<uint32_t>> triangles;
     std::vector<jtk::vec3<jtk::vec2<float>>> uv;
     return write_trc(wfilename.c_str(), p.vertices, p.normals, p.vertex_colors, triangles, uv);
+    }
+  else if (ext == "off")
+    {
+    std::vector<jtk::vec3<uint32_t>> triangles;    
+    return jtk::write_off((uint32_t)p.vertices.size(), p.vertices.data(), p.vertex_colors.data(), (uint32_t)triangles.size(), triangles.data(), wfilename.c_str());
     }
   return false;
   }

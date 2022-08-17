@@ -17,6 +17,7 @@ enum class pc_filetype
   PC_FILETYPE_PTS,
   PC_FILETYPE_XYZ,
   PC_FILETYPE_TRC,
+  PC_FILETYPE_OFF
   };
 
 struct pc
