@@ -17,6 +17,12 @@ First of all, j3d uses submodules, so don't forget to also call
 Next, run CMake to generate a solution file on Windows, a make file on Linux, or an XCode project on MacOs.
 You can build j3d without building other external projects (as all necessary dependencies are delivered with the code). 
 
+On MacOs, you might need to install X11. This can be done with the command
+
+    brew install --cask xquartz
+    
+Furthermore it is possible that linking with OpenGL fails. That's because I've hardcoded the location of my OpenGL binaries in the j3d/CMakeLists.txt file. Simply change the location of the OpenGL include and library folders/files and you should be good to go.
+
 The default multithreading approach uses `std::thread`. There is however the option to use multithreading via [Intel's TBB library](https://software.intel.com/content/www/us/en/develop/tools/threading-building-blocks.html). This is an option in CMake: set the `JTK_THREADING` variable to `tbb`. You will have to make sure that you have the correct dll files and lib files to link with TBB. You can set the necessary variables `TBB_INCLUDE_DIR` and `TBB_LIBRARIES` via CMake.
 
 If you build for a Mac M1 with ARM processor, then set the CMake variables JTK_TARGET to arm.
