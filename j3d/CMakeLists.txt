@@ -1,37 +1,38 @@
 if (WIN32)
   set(TBB_INCLUDE_DIR "C:/Program Files/TBB/include" CACHE PATH "the include path for TBB")
   set(TBB_LIBRARIES "C:/Program Files/TBB/lib/intel64/vc14/tbb.lib" "C:/Program Files/TBB/lib/intel64/vc14/tbb_debug.lib" CACHE FILEPATH "the tbb lib files")
-  set(OPENGL_LIBRARIES opengl32.lib CACHE FILEPATH "opengl lib file")
 endif (WIN32)
 
 if (UNIX)
   if (APPLE)
     set(TBB_INCLUDE_DIR "/usr/local/include" "/usr/include" CACHE PATH "the include path for TBB")
     set(TBB_LIBRARIES "/usr/local/lib/libtbb.dylib" CACHE FILEPATH "the tbb .dylib file")
-    set(OPENGL_LIBRARIES "/System/Library/Frameworks/OpenGL.framework/OpenGL" CACHE FILEPATH "opengl lib file")
   else()
     set(TBB_INCLUDE_DIR "/usr/local/include" "/usr/include" CACHE PATH "the include path for TBB")
     set(TBB_LIBRARIES "/usr/lib/x86_64-linux-gnu/libtbb.so" "/usr/lib/x86_64-linux-gnu/libtbb.so.2" CACHE FILEPATH "the tbb .so files")
-    set(OPENGL_LIBRARIES "/usr/lib/x86_64-linux-gnu/libOpenGL.so.0.0.0" CACHE FILEPATH "opengl lib file")
   endif(APPLE)
 endif (UNIX)
 
 set(IMGUI
+${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imconfig.h
 ${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imgui.h
-${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imgui_impl_opengl2.h
-${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imgui_impl_sdl.h
-${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imgui_stdlib.h
-${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/dirent_portable.h
-${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imguifilesystem.h
+${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imgui_impl_sdl2.h
+${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imgui_impl_sdlrenderer.h
+${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imgui_internal.h
+${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imstb_rectpack.h
+${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imstb_textedit.h
+${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imstb_truetype.h
 ${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imgui.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imgui_draw.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imgui_demo.cpp
-${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imgui_impl_opengl2.cpp
-${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imgui_impl_sdl.cpp
-${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imgui_stdlib.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imgui_impl_sdl2.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imgui_impl_sdlrenderer.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imgui_tables.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imgui_widgets.cpp
+
+${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/dirent_portable.h
 ${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imguifilesystem.cpp
+${CMAKE_CURRENT_SOURCE_DIR}/../imgui_sdl/imguifilesystem.h
 )
 
 
@@ -155,7 +156,6 @@ target_include_directories(j3d
 	
 target_link_libraries(j3d
     PRIVATE
-    ${OPENGL_LIBRARIES}    
     SDL2-static
     SDL2main
     trico

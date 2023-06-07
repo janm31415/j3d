@@ -1,7 +1,6 @@
 #pragma once
 
-#include <SDL.h>
-#include <SDL_opengl.h>
+#include "SDL.h"
 
 #include "canvas.h"
 #include <jtk/image.h>
@@ -108,9 +107,9 @@ class view
     scene _scene;
     db _db;
 
-    GLuint _gl_texture;
-    uint32_t _gl_texture_w;
-    uint32_t _gl_texture_h;
+    SDL_Renderer* _renderer;
+    SDL_Surface* _canvas_surface;
+    SDL_Texture* _canvas_texture;
 
     jtk::image<uint32_t> _screen;
     canvas _canvas;

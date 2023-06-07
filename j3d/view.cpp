@@ -4,8 +4,8 @@
 #include "view.h"
 
 #include "imgui.h"
-#include "imgui_impl_sdl.h"
-#include "imgui_impl_opengl2.h"
+#include "imgui_impl_sdl2.h"
+#include "imgui_impl_sdlrenderer.h"
 #include "imguifilesystem.h"
 
 #include "jtk/file_utils.h"
@@ -38,26 +38,45 @@ namespace
     return v;
     }
 
-  void gl_check_error(const char* txt)
-    {
-    unsigned int err = glGetError();
-    if (err)
-      {
-      std::stringstream str;
-      str << "GL error " << err << ": " << txt;
-      throw std::runtime_error(str.str());
-      }
-    }
-
   void clear_screen(image<uint32_t>& screen, const uint32_t clr)
     {
     for (auto& v : screen)
       v = clr;
     }
+    
+  SDL_Surface* create_sdl_surface(const image<uint32_t>& im)
+    {
+    SDL_Surface* surf = SDL_CreateRGBSurface(0, im.width(), im.height(), 32, 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000);
+    return surf;
+    }
+
+  void fill_rgba_buffer_with_image(void* buffer, uint32_t buffer_bytes_per_row, const image<uint32_t>& im)
+    {
+    const int32_t w = im.width();
+    const int32_t h = im.height();
+    for (int y = 0; y < h; ++y)
+      {
+      uint32_t* p_buffer_row = (uint32_t*)((uint8_t*)buffer + y * buffer_bytes_per_row);
+      const uint32_t* p_source_row = im.data() + (h-y-1)*im.stride();
+      for (int x = 0; x < w; ++x)
+        {
+        *p_buffer_row++ = *p_source_row++;
+        }
+      }
+    }
+  
+  void fill_sdl_surface(SDL_Surface* surf, const image<uint32_t>& im)
+    {
+    assert(surf->w == im.width());
+    assert(surf->h == im.height());
+    SDL_LockSurface(surf);
+    fill_rgba_buffer_with_image(surf->pixels, surf->pitch, im);
+    SDL_UnlockSurface(surf);
+    }
 
   }
 
-view::view() : _w(1600), _h(900), _window(nullptr)
+view::view() : _w(1600), _h(900), _window(nullptr), _canvas_texture(nullptr), _canvas_surface(nullptr), _renderer(nullptr)
   {
   SDL_DisplayMode DM;
   SDL_GetCurrentDisplayMode(0, &DM);
@@ -68,12 +87,7 @@ view::view() : _w(1600), _h(900), _window(nullptr)
     _w = _w_max;
   if (_h > _h_max)
     _h = _h_max;
-  // Setup window
-  SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-  SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-  SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+
   SDL_DisplayMode current;
   SDL_GetCurrentDisplayMode(0, &current);
 
@@ -125,12 +139,14 @@ void view::delete_window()
   {
   if (!_window)
     return;
-  glDeleteTextures(1, &_gl_texture);
   // Cleanup
-  ImGui_ImplOpenGL2_Shutdown();
+  ImGui_ImplSDLRenderer_Shutdown();
   ImGui_ImplSDL2_Shutdown();
   ImGui::DestroyContext();
 
+  SDL_DestroyTexture(_canvas_texture);
+  SDL_FreeSurface(_canvas_surface);
+  SDL_DestroyRenderer(_renderer);
   SDL_DestroyWindow(_window);
   _window = nullptr;
   }
@@ -146,9 +162,14 @@ void view::prepare_window()
     std::cout << SDL_GetError() << "\n";
     return;
     }
-  SDL_GLContext gl_context = SDL_GL_CreateContext(_window);
-  SDL_GL_SetSwapInterval(1); // Enable vsync
-
+  _renderer = SDL_CreateRenderer(_window, -1, SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_ACCELERATED);
+  if (!_renderer)
+    {
+    SDL_DestroyWindow(_window);
+    _window = nullptr;
+    std::cout << SDL_GetError() << "\n";
+    return;
+    }
   // Setup Dear ImGui context
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
@@ -157,35 +178,14 @@ void view::prepare_window()
   //p_atlas->AddFontFromFileTTF("C:/_Dev/jedi/jedi/jedi/fonts/NotoMono-Regular.ttf", 17);
 
   // Setup Platform/Renderer bindings
-  ImGui_ImplSDL2_InitForOpenGL(_window, gl_context);
-  ImGui_ImplOpenGL2_Init();
-
+  ImGui_ImplSDL2_InitForSDLRenderer(_window, _renderer);
+  ImGui_ImplSDLRenderer_Init(_renderer);
   // Setup Style
   ImGui::StyleColorsDark();
   //ImGui::StyleColorsClassic();
 
   ImGui::GetStyle().Colors[ImGuiCol_TitleBg] = ImGui::GetStyle().Colors[ImGuiCol_TitleBgActive];
-
-
-  SDL_GL_MakeCurrent(_window, gl_context);
-
-  glEnable(GL_TEXTURE_2D);
-  glGenTextures(1, &_gl_texture);
-  glBindTexture(GL_TEXTURE_2D, _gl_texture);
-
-  _gl_texture_w = get_next_power_of_two(_w_max);
-  _gl_texture_h = get_next_power_of_two(_h_max);
-
-  GLint max_texture_size;
-  glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_texture_size);
-
-  if (_gl_texture_w > (uint32_t)max_texture_size)
-    _gl_texture_w = (uint32_t)max_texture_size;
-  if (_gl_texture_h > (uint32_t)max_texture_size)
-    _gl_texture_h = (uint32_t)max_texture_size;
-
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _gl_texture_w, _gl_texture_h, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-  gl_check_error("glTexImage2D in view.cpp");
+  
   }
 
 void view::update_current_folder(const std::string& folder)
@@ -770,6 +770,18 @@ void view::poll_for_events()
 
 void view::blit_screen_to_opengl_texture()
   {
+  if (_canvas_surface == nullptr)
+    {
+    _canvas_surface = create_sdl_surface(_screen);
+    fill_sdl_surface(_canvas_surface, _screen);
+    }
+  else
+    {
+    fill_sdl_surface(_canvas_surface, _screen);
+    SDL_DestroyTexture(_canvas_texture);
+    }
+  _canvas_texture = SDL_CreateTextureFromSurface(_renderer, _canvas_surface);
+  /*
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
   glOrtho(0, _w, 0, _h, 0, 1);
@@ -825,6 +837,7 @@ void view::blit_screen_to_opengl_texture()
       gl_check_error("GL_TRIANGLE_STRIP in view.cpp");
       }
     }
+    */
   }
 
 void view::info()
@@ -952,7 +965,7 @@ void view::render_mouse()
 void view::imgui_ui()
   {
   // Start the Dear ImGui frame
-  ImGui_ImplOpenGL2_NewFrame();
+  ImGui_ImplSDLRenderer_NewFrame();
   ImGui_ImplSDL2_NewFrame(_window);
   ImGui::NewFrame();
 
@@ -1211,6 +1224,7 @@ void view::quit()
 
 void view::loop()
   {
+  ImGuiIO& io = ImGui::GetIO();
   while (!_quit)
     {
 
@@ -1235,6 +1249,10 @@ void view::loop()
           }
       }
 
+    SDL_RenderSetScale(_renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
+    SDL_SetRenderDrawColor(_renderer, 10, 40, 80, 255);
+    SDL_RenderClear(_renderer);
+    
     clear_screen(_screen, _settings._background);
     _canvas.blit_onto(_screen, _canvas_pos_x, _canvas_pos_y);
 
@@ -1242,8 +1260,15 @@ void view::loop()
       {
       render_mouse();
       blit_screen_to_opengl_texture();
-      ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
-      SDL_GL_SwapWindow(_window);
+      SDL_Rect destination;
+      destination.x = 0;
+      destination.y = 0;
+      destination.w = _screen.width();
+      destination.h = _screen.height();
+      SDL_RenderCopy(_renderer, _canvas_texture, NULL, &destination);
+    
+      ImGui_ImplSDLRenderer_RenderDrawData(ImGui::GetDrawData());
+      SDL_RenderPresent(_renderer);
       }
     else
       std::this_thread::sleep_for(std::chrono::duration<double, std::milli>(16.0));
