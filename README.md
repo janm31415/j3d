@@ -46,13 +46,6 @@ Note that, apart from the disk loading time, j3d also spends time to construct a
 
 ![](images/j3d_screenshot_lucy.png)
 
-Large file example
-------------------
-
-The mesh in the image below has 276 million triangles. The file can be rendered at 14 fps with resolution 800x600 on an Intel Xeon W-2145 CPU @ 3.70Ghz.
-
-![](images/j3d_screenshot_2.png)
-
 Conversion to MagicaVoxel example
 ---------------------------------
 
