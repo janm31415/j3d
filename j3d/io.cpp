@@ -230,6 +230,36 @@ namespace
 
   namespace
     {
+    
+    void correct_vertices_and_triangles(const std::vector<jtk::vec3<float>>& vertices, std::vector<jtk::vec3<uint32_t>>& triangles, std::vector<jtk::vec3<uint32_t>>& tria_uv) {
+      if (triangles.empty())
+        return;
+      uint32_t min_tria = triangles.front()[0];
+      uint32_t max_tria = min_tria;
+      for (const auto& t : triangles) {
+        min_tria = std::min<uint32_t>(min_tria, t[0]);
+        min_tria = std::min<uint32_t>(min_tria, t[1]);
+        min_tria = std::min<uint32_t>(min_tria, t[2]);
+        max_tria = std::max<uint32_t>(max_tria, t[0]);
+        max_tria = std::max<uint32_t>(max_tria, t[1]);
+        max_tria = std::max<uint32_t>(max_tria, t[2]);
+      }
+      if (max_tria >= vertices.size()) {
+        if (min_tria > 0) {
+          for (auto& t : triangles) {
+            t[0] -= min_tria;
+            t[1] -= min_tria;
+            t[2] -= min_tria;
+          }
+          for (auto& uv : tria_uv) {
+            uv[0] -= min_tria;
+            uv[1] -= min_tria;
+            uv[2] -= min_tria;
+          }
+          max_tria -= min_tria;
+        }
+      }
+    }
 
     bool read_texture_filename_from_mtl(std::string& texture_file, const char* filename)
       {
@@ -408,6 +438,7 @@ namespace
     fclose(f);
     if (!tria_uv.empty() && (triangles.size() != tria_uv.size()))
       return false;
+    correct_vertices_and_triangles(vertices, triangles, tria_uv);
     if (!tria_uv.empty())
       {
       for (auto& t : tex)

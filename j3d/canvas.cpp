@@ -806,8 +806,12 @@ void canvas::update_canvas(jtk::image<pixel>& out, int x0, int y0, int x1, int y
           auto coord = (1.f - hit.u - hit.v)*uvcoords[0] + hit.u*uvcoords[1] + hit.v*uvcoords[2];
           coord[0] = std::max(std::min(coord[0], 1.f), 0.f);
           coord[1] = std::max(std::min(coord[1], 1.f), 0.f);
-          int x = (int)(coord[0] * (textures[two_level_index]->width() - 1));
-          int y = (int)(coord[1] * (textures[two_level_index]->height() - 1));
+          const int w = textures[two_level_index]->width();
+          const int h = textures[two_level_index]->height();
+          int x = (int)(coord[0] * w);
+          int y = (int)(coord[1] * h);
+          x = x < 0 ? 0 : x >= w ? w-1 : x;
+          y = y < 0 ? 0 : y >= h ? h-1 : y;
           uint32_t color = (*textures[two_level_index])(x, y);
           p_canvas_line->r = color & 0x000000ff;
           p_canvas_line->g = (color & 0x0000ff00) >> 8;
