@@ -126,6 +126,16 @@ view::view() : _w(1600), _h(900), _window(nullptr), _canvas_texture(nullptr), _c
 
   _suspend = false;
   _resume = false;
+  
+  _scene.coordinate_system = jtk::get_identity();
+  _scene.coordinate_system_inv = jtk::get_identity();
+  _scene.diagonal = 1.f;
+  for (int i = 0; i < 3; ++i) {
+    _scene.pivot[i] = 0.f;
+    _scene.min_bb[1] = 0.f;
+    _scene.max_bb[2] = 0.f;
+  }
+  
   }
 
 view::~view()
@@ -222,7 +232,9 @@ int64_t view::load_mesh_from_file(const char* filename)
     db_mesh->acceleration_structure_construction_time_in_s = t.time_elapsed();
     }
   prepare_scene(_scene);
-  ::unzoom(_scene);
+  if (_settings._auto_unzoom) {
+    ::unzoom(_scene);
+  }
   _refresh = true;
   return (int64_t)id;
   }
@@ -250,7 +262,9 @@ int64_t view::load_pc_from_file(const char* filename)
   if (db_pc->visible)
     add_object(id, _scene, _db);
   prepare_scene(_scene);
-  ::unzoom(_scene);
+  if (_settings._auto_unzoom) {
+    ::unzoom(_scene);
+  }
   _refresh = true;
   return (int64_t)id;
   }
@@ -655,6 +669,10 @@ void view::process_keys()
     {
     _settings._canvas_settings.wireframe = !_settings._canvas_settings.wireframe;
     _refresh = true;
+    }
+  else if (_key.is_pressed(SDLK_a))
+    {
+    _settings._auto_unzoom = !_settings._auto_unzoom;
     }
   }
 
@@ -1073,6 +1091,7 @@ void view::imgui_ui()
           {
           unzoom();
           }
+        ImGui::MenuItem("Auto unzoom", "a", &_settings._auto_unzoom);
         ImGui::EndMenu();
         }
       if (ImGui::BeginMenu("MatCap"))

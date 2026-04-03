@@ -21,6 +21,7 @@ settings::settings()
   _gradient_top = 0xff000000;
   _gradient_bottom = 0xff404040;
   _background = 0xff000000 | (uint32_t(49) << 16) | (uint32_t(49) << 8) | uint32_t(49);
+  _auto_unzoom = true;
   }
 
 
@@ -46,6 +47,7 @@ settings read_settings(const char* filename)
   f["gradient_top"] >> s._gradient_top;
   f["gradient_bottom"] >> s._gradient_bottom;
   f["background"] >> s._background;
+  f["auto_unzoom"] >> s._auto_unzoom;
   s._current_folder_files = jtk::get_files_from_directory(s._current_folder, false);
 
   return s;
@@ -70,6 +72,7 @@ void write_settings(const settings& s, const char* filename)
   f << "gradient_top" << s._gradient_top;
   f << "gradient_bottom" << s._gradient_bottom;
   f << "background" << s._background;
+  f << "auto_unzoom" << s._auto_unzoom;
   f.release();
   }
 

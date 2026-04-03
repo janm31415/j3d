@@ -19,6 +19,7 @@ struct settings
   std::string _matcap_file;
   uint32_t _gradient_top, _gradient_bottom, _background;
   uint32_t _vox_max_size;
+  bool _auto_unzoom;
   };
 
 
